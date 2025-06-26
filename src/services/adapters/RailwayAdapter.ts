@@ -10,7 +10,7 @@
  * 4. Test each adapter method to ensure compatibility
  */
 
-import { AuthAdapter, DatabaseAdapter, VoiceServiceAdapter, AuthUser, DatabaseRecord, WebSocketMessage } from './types';
+import { AuthAdapter, DatabaseAdapter, VoiceServiceAdapter, AuthUser, DatabaseRecord } from './types';
 
 export class RailwayAuthAdapter implements AuthAdapter {
   private readonly baseUrl: string;
@@ -20,13 +20,13 @@ export class RailwayAuthAdapter implements AuthAdapter {
     console.log('🚂 RailwayAuthAdapter: Initialized', { baseUrl });
   }
 
-  async signUp(email: string, password: string): Promise<AuthUser> {
+  async signUp(email: string, password: string, metadata?: any): Promise<AuthUser> {
     console.log('🔐 RailwayAuthAdapter: Signing up user', { email });
     
     const response = await fetch(`${this.baseUrl}/auth/signup`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ email, password })
+      body: JSON.stringify({ email, password, metadata })
     });
     
     if (!response.ok) {
@@ -210,7 +210,7 @@ export class RailwayVoiceServiceAdapter implements VoiceServiceAdapter {
     console.log('🚂 RailwayVoiceServiceAdapter: Initialized', { websocketUrl });
   }
 
-  createWebSocketUrl(path: string, params?: Record<string, string>): string {
+  createVoiceWebSocketUrl(path: string, params?: Record<string, string>): string {
     console.log('🎙️ RailwayVoiceServiceAdapter: Creating WebSocket URL', { path, params });
     
     const url = new URL(`${this.websocketUrl}/${path}`);
@@ -240,17 +240,23 @@ export class RailwayVoiceServiceAdapter implements VoiceServiceAdapter {
     return base64Audio;
   }
 
-  handleVoiceMessage(message: any): WebSocketMessage {
+  handleVoiceMessage(message: any): void {
     console.log('🎙️ RailwayVoiceServiceAdapter: Handling voice message', { type: message.type });
-    
-    return {
-      type: message.type || message.event || 'unknown',
-      data: message,
-      timestamp: Date.now()
-    };
   }
 
   getCurrentBackendType(): string {
     return 'railway';
+  }
+
+  isRailwayBackend(): boolean {
+    return true;
+  }
+
+  isSupabaseBackend(): boolean {
+    return false;
+  }
+
+  isLocalBackend(): boolean {
+    return false;
   }
 }

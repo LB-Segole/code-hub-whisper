@@ -1,3 +1,4 @@
+
 /**
  * Supabase Implementation of Backend Adapters
  * This file contains all Supabase-specific logic
@@ -5,10 +6,10 @@
  */
 
 import { supabase } from '@/lib/supabase';
-import { AuthAdapter, DatabaseAdapter, VoiceServiceAdapter, AuthUser, DatabaseRecord, WebSocketMessage } from './types';
+import { AuthAdapter, DatabaseAdapter, VoiceServiceAdapter, AuthUser, DatabaseRecord } from './types';
 
 export class SupabaseAuthAdapter implements AuthAdapter {
-  async signUp(email: string, password: string): Promise<AuthUser> {
+  async signUp(email: string, password: string, metadata?: any): Promise<AuthUser> {
     console.log('🔐 SupabaseAuthAdapter: Signing up user', { email });
     
     const { data, error } = await supabase.auth.signUp({ email, password });
@@ -18,6 +19,7 @@ export class SupabaseAuthAdapter implements AuthAdapter {
     return {
       id: data.user.id,
       email: data.user.email,
+      user_metadata: data.user.user_metadata,
       metadata: data.user.user_metadata
     };
   }
@@ -32,6 +34,7 @@ export class SupabaseAuthAdapter implements AuthAdapter {
     return {
       id: data.user.id,
       email: data.user.email,
+      user_metadata: data.user.user_metadata,
       metadata: data.user.user_metadata
     };
   }
@@ -52,6 +55,7 @@ export class SupabaseAuthAdapter implements AuthAdapter {
     return {
       id: user.id,
       email: user.email,
+      user_metadata: user.user_metadata,
       metadata: user.user_metadata
     };
   }
@@ -63,6 +67,7 @@ export class SupabaseAuthAdapter implements AuthAdapter {
       const user = session?.user ? {
         id: session.user.id,
         email: session.user.email,
+        user_metadata: session.user.user_metadata,
         metadata: session.user.user_metadata
       } : null;
       callback(user);
@@ -133,7 +138,7 @@ export class SupabaseDatabaseAdapter implements DatabaseAdapter {
 }
 
 export class SupabaseVoiceServiceAdapter implements VoiceServiceAdapter {
-  createWebSocketUrl(functionName: string, params?: Record<string, string>): string {
+  createVoiceWebSocketUrl(functionName: string, params?: Record<string, string>): string {
     console.log('🎙️ SupabaseVoiceServiceAdapter: Creating WebSocket URL', { functionName, params });
     
     // Use the deepgram-voice-websocket endpoint that exists
@@ -163,17 +168,23 @@ export class SupabaseVoiceServiceAdapter implements VoiceServiceAdapter {
     return base64Audio;
   }
 
-  handleVoiceMessage(message: any): WebSocketMessage {
+  handleVoiceMessage(message: any): void {
     console.log('🎙️ SupabaseVoiceServiceAdapter: Handling voice message', { type: message.type });
-    
-    return {
-      type: message.type || message.event || 'unknown',
-      data: message,
-      timestamp: Date.now()
-    };
   }
 
   getCurrentBackendType(): string {
     return 'supabase';
+  }
+
+  isRailwayBackend(): boolean {
+    return false;
+  }
+
+  isSupabaseBackend(): boolean {
+    return true;
+  }
+
+  isLocalBackend(): boolean {
+    return false;
   }
 }
