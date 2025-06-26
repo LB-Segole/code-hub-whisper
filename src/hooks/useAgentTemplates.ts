@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from 'react';
 
 export interface AgentTemplate {
@@ -42,14 +43,22 @@ export const useAgentTemplates = () => {
           name: 'Customer Support Agent',
           description: 'Helpful customer service assistant',
           category: 'Support',
-          system_prompt: 'You are a helpful customer support agent.',
+          template_data: {
+            system_prompt: 'You are a helpful customer support agent.',
+            voice_model: 'aura-2-asteria-en',
+            example_calls: ['How can I help you today?'],
+            is_active: true
+          },
           is_public: true,
           created_by: 'system',
           created_at: new Date().toISOString(),
           updated_at: new Date().toISOString(),
-          rating: 4.5,
+          rating_average: 4.5,
+          rating_count: 10,
           usage_count: 150,
-          tags: ['support', 'customer-service']
+          downloads_count: 50,
+          tags: ['support', 'customer-service'],
+          version: '1.0.0'
         }
       ];
       

@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from 'react';
 import { backendService } from '@/services/BackendService';
 
@@ -39,11 +40,11 @@ export const useCampaigns = () => {
 
   const createCampaign = async (campaignData: Partial<Campaign>): Promise<Campaign | null> => {
     try {
-      const newCampaign = await backendService.insert('campaigns', {
+      const newCampaign = await backendService.insert<Campaign>('campaigns', {
         ...campaignData,
         created_at: new Date().toISOString(),
         updated_at: new Date().toISOString()
-      }) as Campaign;
+      });
       
       setCampaigns(prev => [newCampaign, ...prev]);
       return newCampaign;

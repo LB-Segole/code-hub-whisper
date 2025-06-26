@@ -15,7 +15,7 @@ export interface ChainExecution {
 export class ChainExecutionService {
   static async create(data: Partial<ChainExecution>): Promise<ChainExecution> {
     const result = await backendService.insert('chain_executions', data);
-    return result as ChainExecution;
+    return result as unknown as ChainExecution;
   }
 
   static async getById(id: string): Promise<ChainExecution | null> {
@@ -23,7 +23,7 @@ export class ChainExecutionService {
       where: { id },
       limit: 1
     });
-    return (results[0] as ChainExecution) || null;
+    return (results[0] as unknown as ChainExecution) || null;
   }
 
   static async getByChainId(chainId: string): Promise<ChainExecution[]> {
@@ -31,15 +31,15 @@ export class ChainExecutionService {
       where: { chain_id: chainId },
       orderBy: { column: 'started_at', ascending: false }
     });
-    return results as ChainExecution[];
+    return results as unknown as ChainExecution[];
   }
 
   static async update(id: string, data: Partial<ChainExecution>): Promise<ChainExecution> {
     const result = await backendService.update('chain_executions', id, data);
-    return result as ChainExecution;
+    return result as unknown as ChainExecution;
   }
 
-  static async startChainExecution(chainId: string, callId?: string): Promise<ChainExecution> {
+  static async startChainExecution(chainId: string): Promise<ChainExecution> {
     const execution = await this.create({
       chain_id: chainId,
       status: 'pending',
@@ -62,7 +62,7 @@ export class ChainExecutionService {
       where: { status: 'running' },
       orderBy: { column: 'started_at', ascending: false }
     });
-    return results as ChainExecution[];
+    return results as unknown as ChainExecution[];
   }
 }
 

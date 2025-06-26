@@ -1,6 +1,4 @@
 
-import { backendService } from '@/services/BackendService';
-
 export interface ChatMessage {
   role: 'user' | 'assistant';
   content: string;
@@ -22,7 +20,7 @@ class AIChatService {
       const history = this.conversationHistory.get(sessionId) || [];
       
       // Simulate AI response for local mode
-      const response = this.generateLocalResponse(message);
+      const response = this.generateLocalResponse();
       
       // Update conversation history
       const updatedHistory = [
@@ -50,7 +48,7 @@ class AIChatService {
     this.conversationHistory.delete(sessionId);
   }
 
-  private generateLocalResponse(message: string): string {
+  private generateLocalResponse(): string {
     const responses = [
       "I understand your question. How can I help you further?",
       "That's an interesting point. Let me think about that...",

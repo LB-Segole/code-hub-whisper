@@ -11,9 +11,6 @@ interface UseVoiceWebSocketProps {
 }
 
 export const useVoiceWebSocket = ({
-  userId,
-  callId,
-  assistantId,
   onConnectionChange,
   onMessage,
   onError

@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
@@ -40,7 +39,7 @@ const CampaignDialog: React.FC<CampaignDialogProps> = ({ trigger, onSuccess }) =
     setIsSubmitting(true);
     
     try {
-      await createCampaign.mutateAsync(formData);
+      await createCampaign(formData);
       toast.success('Campaign created successfully!');
       setFormData({
         name: '',

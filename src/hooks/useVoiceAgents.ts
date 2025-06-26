@@ -1,32 +1,7 @@
+
 import { useState, useEffect } from 'react';
 import { backendService } from '@/services/BackendService';
-
-export interface VoiceAgent {
-  id: string;
-  name: string;
-  system_prompt: string;
-  first_message?: string;
-  voice_provider: string;
-  voice_id: string;
-  model: string;
-  temperature: number;
-  max_tokens: number;
-  created_at: string;
-  updated_at: string;
-  user_id: string;
-  is_active?: boolean;
-}
-
-export interface VoiceAgentFormData {
-  name: string;
-  system_prompt: string;
-  first_message?: string;
-  voice_provider: string;
-  voice_id: string;
-  model: string;
-  temperature: number;
-  max_tokens: number;
-}
+import { VoiceAgent, VoiceAgentFormData } from '@/types/voiceAgent';
 
 export const useVoiceAgents = () => {
   const [agents, setAgents] = useState<VoiceAgent[]>([]);
@@ -119,7 +94,7 @@ export const useVoiceAgents = () => {
 
   const toggleAgentStatus = async (id: string, isActive: boolean): Promise<boolean> => {
     try {
-      const updatedAgent = await backendService.update<VoiceAgent>('voice_agents', id, {
+      await backendService.update<VoiceAgent>('voice_agents', id, {
         is_active: isActive,
         updated_at: new Date().toISOString()
       });

@@ -1,5 +1,5 @@
 
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { backendService } from '@/services/BackendService';
 
 export interface Team {

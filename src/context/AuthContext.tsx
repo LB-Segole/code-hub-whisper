@@ -1,3 +1,4 @@
+
 import React, { createContext, useState, useEffect, useContext } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { backendService } from '@/services/BackendService';
@@ -5,6 +6,7 @@ import { backendService } from '@/services/BackendService';
 interface AuthContextProps {
   user: any | null;
   isLoading: boolean;
+  isAuthenticated: boolean;
   login: (credentials: any) => Promise<void>;
   logout: () => void;
   register: (userData: any) => Promise<void>;
@@ -42,10 +44,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     loadUser();
   }, []);
 
-  const login = async (credentials: any): Promise<void> => {
+  const login = async (credentials: { email: string; password: string }): Promise<void> => {
     setIsLoading(true);
     try {
-      const session = await backendService.signIn(credentials);
+      const session = await backendService.signIn(credentials.email, credentials.password);
       setUser(session?.user || null);
       navigate('/dashboard');
     } catch (error) {
@@ -56,10 +58,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   };
 
-  const register = async (userData: any): Promise<void> => {
+  const register = async (userData: { email: string; password: string; name?: string }): Promise<void> => {
     setIsLoading(true);
     try {
-      const session = await backendService.signUp(userData);
+      const session = await backendService.signUp(userData.email, userData.password, userData);
       setUser(session?.user || null);
       navigate('/dashboard');
     } catch (error) {
@@ -82,16 +84,17 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     await new Promise(resolve => setTimeout(resolve, 1000));
   };
 
-  const updatePassword = async (newPassword: string): Promise<void> => {
+  const updatePassword = async (password: string): Promise<void> => {
     console.log('Password update requested');
     // Simulate password update in local mode
-    setUser(prev => prev ? { ...prev, updated_at: new Date().toISOString() } : null);
+    setUser((prev: any) => prev ? { ...prev, updated_at: new Date().toISOString() } : null);
     await new Promise(resolve => setTimeout(resolve, 1000));
   };
 
   const value: AuthContextProps = {
     user,
     isLoading,
+    isAuthenticated: !!user,
     login,
     logout,
     register,
