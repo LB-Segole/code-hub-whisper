@@ -8,7 +8,7 @@ interface ContactUploaderProps {
   onSuccess?: (contacts: any[]) => void;
 }
 
-const ContactUploader: React.FC<ContactUploaderProps> = ({ campaignId, onSuccess }) => {
+const ContactUploader: React.FC<ContactUploaderProps> = () => {
   return (
     <Card>
       <CardHeader>

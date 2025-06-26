@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { backendService } from '@/services/BackendService';
 
@@ -84,17 +83,24 @@ export const useVoiceAgents = () => {
 
   const updateAgent = async (id: string, formData: VoiceAgentFormData): Promise<VoiceAgent | null> => {
     try {
-      const updatedAgent = await backendService.update<VoiceAgent>('voice_agents', id, {
+      setIsLoading(true);
+      
+      const updateData = {
         ...formData,
         updated_at: new Date().toISOString()
-      });
+      };
+
+      await backendService.update('voice_agents', id, updateData);
       
-      setAgents(prev => prev.map(agent => agent.id === id ? updatedAgent : agent));
-      return updatedAgent;
-    } catch (err) {
-      console.error('Error updating voice agent:', err);
-      setError(err instanceof Error ? err.message : 'Failed to update agent');
+      // Reload the agents to get the updated data
+      await loadAgents();
+      
+      return agents.find(agent => agent.id === id) || null;
+    } catch (error) {
+      console.error('Error updating voice agent:', error);
       return null;
+    } finally {
+      setIsLoading(false);
     }
   };
 

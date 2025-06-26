@@ -95,6 +95,13 @@ const Assistants = () => {
     }
   };
 
+  const handleDelete = async (assistantId: string) => {
+    const success = await deleteAssistant(assistantId);
+    if (success) {
+      console.log('Assistant deleted successfully');
+    }
+  };
+
   const handleStartVoiceChat = (assistant: Assistant) => {
     console.log('🚀 Starting voice chat for assistant:', assistant.name);
     setSelectedAssistant(assistant);
@@ -165,7 +172,7 @@ const Assistants = () => {
               key={assistant.id}
               assistant={assistant}
               onEdit={startEdit}
-              onDelete={deleteAssistant}
+              onDelete={handleDelete}
               onStartVoiceChat={handleStartVoiceChat}
               onMakeCall={handleMakeCall}
             />

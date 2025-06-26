@@ -1,4 +1,3 @@
-
 import React, { createContext, useContext, useEffect, useState, ReactNode } from 'react';
 import { backendService, AuthUser } from '@/services/BackendService';
 
@@ -8,6 +7,8 @@ interface AuthContextType {
   login: (credentials: { email: string; password: string }) => Promise<void>;
   register: (userData: { name: string; email: string; password: string }) => Promise<void>;
   logout: () => Promise<void>;
+  resetPassword: (email: string) => Promise<void>;
+  updatePassword: (newPassword: string) => Promise<void>;
   isLoading: boolean;
 }
 
@@ -98,12 +99,36 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     }
   };
 
+  const resetPassword = async (email: string) => {
+    try {
+      console.log('Password reset requested for:', email);
+      // In local mode, just log the request
+      alert('Password reset functionality would be available with the local backend.');
+    } catch (error) {
+      console.error('Reset password error:', error);
+      throw error;
+    }
+  };
+
+  const updatePassword = async (newPassword: string) => {
+    try {
+      console.log('Password update requested');
+      // In local mode, just log the request
+      alert('Password update functionality would be available with the local backend.');
+    } catch (error) {
+      console.error('Update password error:', error);
+      throw error;
+    }
+  };
+
   const value = {
     user,
     isAuthenticated,
     login,
     register,
     logout,
+    resetPassword,
+    updatePassword,
     isLoading,
   };
 

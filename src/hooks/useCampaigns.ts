@@ -7,6 +7,7 @@ export interface Campaign {
   name: string;
   description?: string;
   status: 'draft' | 'active' | 'paused' | 'completed';
+  assistant_id?: string;
   total_calls?: number;
   completed_calls?: number;
   success_rate?: number;
@@ -37,9 +38,27 @@ export const useCampaigns = () => {
     }
   };
 
+  const createCampaign = {
+    mutateAsync: async (campaignData: Partial<Campaign>) => {
+      try {
+        const newCampaign = await backendService.insert('campaigns', {
+          ...campaignData,
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString()
+        });
+        setCampaigns(prev => [newCampaign, ...prev]);
+        return newCampaign;
+      } catch (error) {
+        console.error('Error creating campaign:', error);
+        throw error;
+      }
+    }
+  };
+
   return {
     campaigns,
     isLoading,
-    refetch: loadCampaigns
+    refetch: loadCampaigns,
+    createCampaign
   };
 };

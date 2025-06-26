@@ -1,6 +1,5 @@
 
 import { useState, useEffect } from 'react';
-import { backendService } from '@/services/BackendService';
 
 export interface AgentTemplate {
   id: string;

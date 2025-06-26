@@ -83,7 +83,7 @@ const AssistantCard: React.FC<AssistantCardProps> = ({
         </div>
         
         <div className="text-xs text-gray-400">
-          Created: {new Date(assistant.created_at).toLocaleDateString()}
+          Created: {assistant.created_at ? new Date(assistant.created_at).toLocaleDateString() : 'Unknown'}
         </div>
       </CardContent>
     </Card>
