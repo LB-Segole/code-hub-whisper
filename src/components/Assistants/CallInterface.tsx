@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -6,7 +7,7 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Phone, PhoneCall, PhoneOff, Mic, AlertCircle, Activity } from 'lucide-react';
-import { supabase } from '@/integrations/supabase/client';
+import { backendService } from '@/services/BackendService';
 import { showErrorToast, showSuccessToast } from '@/utils/errorHandling';
 import { Assistant } from '@/types/assistant';
 import VoiceInterface from '@/components/VoiceInterface';
@@ -31,21 +32,19 @@ const CallInterface: React.FC<CallInterfaceProps> = ({ assistants }) => {
   useEffect(() => {
     if (!currentCallId) return;
 
-    console.log('📞 Subscribing to call updates for:', currentCallId);
+    console.log('📞 Setting up call monitoring for:', currentCallId);
     
-    const channel = supabase
-      .channel(`call-updates-${currentCallId}`)
-      .on(
-        'postgres_changes',
-        {
-          event: 'UPDATE',
-          schema: 'public',
-          table: 'calls',
-          filter: `signalwire_call_id=eq.${currentCallId}`
-        },
-        (payload) => {
-          console.log('📞 Call status update:', payload.new);
-          const newStatus = payload.new?.status;
+    // Poll for call status updates since we removed Supabase realtime
+    const interval = setInterval(async () => {
+      try {
+        const calls = await backendService.select('calls', {
+          where: { id: currentCallId },
+          limit: 1
+        });
+        
+        if (calls.length > 0) {
+          const call = calls[0];
+          const newStatus = call.status;
           
           if (newStatus === 'ringing' || newStatus === 'calling') {
             setCallStatus('calling');
@@ -66,116 +65,50 @@ const CallInterface: React.FC<CallInterfaceProps> = ({ assistants }) => {
             }, 3000);
           }
         }
-      )
-      .subscribe();
+      } catch (error) {
+        console.error('Error polling call status:', error);
+      }
+    }, 2000);
 
     return () => {
-      console.log('📞 Unsubscribing from call updates');
-      supabase.removeChannel(channel);
+      clearInterval(interval);
     };
   }, [currentCallId]);
 
-  // Helper function to convert formatted phone number to E.164 format
-  const formatToE164 = (phoneNumber: string): string => {
-    const digits = phoneNumber.replace(/\D/g, '');
-    
-    // If it starts with 1 and has 11 digits total, it's already in the right format
-    if (digits.length === 11 && digits.startsWith('1')) {
-      return `+${digits}`;
-    }
-    
-    // If it has 10 digits, add country code 1
-    if (digits.length === 10) {
-      return `+1${digits}`;
-    }
-    
-    // Return as-is if it doesn't match expected patterns
-    return `+${digits}`;
-  };
-
   const handleMakeCall = async () => {
-    if (!phoneNumber.trim()) {
-      showErrorToast('Please enter a phone number');
-      return;
-    }
-
-    if (!selectedAssistantId) {
-      showErrorToast('Please select an AI agent');
+    if (!phoneNumber.trim() || !selectedAssistantId) {
+      showErrorToast('Please enter a phone number and select an assistant');
       return;
     }
 
     try {
-      console.log('📞 Starting call initiation process...');
       setCallStatus('initiating');
-      setStatusMessage('Preparing call request...');
+      setStatusMessage('Initiating call...');
 
-      // Convert to E.164 format for the API
-      const e164Number = formatToE164(phoneNumber);
-      
-      console.log('📞 Original number:', phoneNumber);
-      console.log('📞 E.164 format:', e164Number);
-
-      if (e164Number.replace(/\D/g, '').length < 11) {
-        showErrorToast('Please enter a valid phone number (at least 10 digits)');
-        setCallStatus('idle');
-        setStatusMessage('');
-        return;
+      const user = await backendService.getCurrentUser();
+      if (!user) {
+        throw new Error('User not authenticated');
       }
 
-      console.log('📞 Making call with assistant:', selectedAssistant?.name, 'to number:', e164Number);
-      
-      const callParams = {
-        phoneNumber: e164Number, // Use E.164 format
-        assistantId: selectedAssistantId,
-        campaignId: null,
-        contactId: null
-      };
-
-      console.log('📞 Call parameters:', callParams);
-      
-      // Enhanced error logging for the function call
-      const { data, error } = await supabase.functions.invoke('make-outbound-call', {
-        body: callParams
+      // Create call record
+      const newCall = await backendService.insert('calls', {
+        phone_number: phoneNumber.trim(),
+        assistant_id: selectedAssistantId,
+        user_id: user.id,
+        status: 'pending',
+        created_at: new Date().toISOString()
       });
 
-      console.log('📞 Function response:', { data, error });
-
-      if (error) {
-        console.error('📞 Supabase function error:', error);
-        setCallStatus('idle');
-        setStatusMessage('');
-        throw new Error(`Function error: ${error.message || error}`);
-      }
-
-      if (data?.success) {
-        console.log('📞 Call initiated successfully, SignalWire ID:', data.callId);
-        setCurrentCallId(data.callId);
-        setCallStatus('calling');
-        setStatusMessage('Call initiated, dialing...');
-        showSuccessToast(`Call initiated! Calling ${phoneNumber} with ${selectedAssistant?.name}...`);
-      } else {
-        console.error('📞 Call initiation failed:', data);
-        setCallStatus('idle');
-        setStatusMessage('');
-        throw new Error(data?.error || 'Failed to initiate call - no success response');
-      }
+      setCurrentCallId(newCall.id);
+      setCallStatus('calling');
+      setStatusMessage('Calling...');
+      
+      showSuccessToast('Call initiated successfully');
     } catch (error) {
-      console.error('📞 Error making call:', error);
+      console.error('Error making call:', error);
+      showErrorToast('Failed to initiate call');
       setCallStatus('idle');
       setStatusMessage('');
-      
-      // More detailed error messaging
-      if (error instanceof Error) {
-        if (error.message.includes('Function error')) {
-          showErrorToast(`Call failed: ${error.message}`);
-        } else if (error.message.includes('network')) {
-          showErrorToast('Network error - please check your connection and try again');
-        } else {
-          showErrorToast(`Failed to initiate call: ${error.message}`);
-        }
-      } else {
-        showErrorToast('Failed to initiate call - unknown error');
-      }
     }
   };
 
@@ -183,42 +116,14 @@ const CallInterface: React.FC<CallInterfaceProps> = ({ assistants }) => {
     if (!currentCallId) return;
 
     try {
-      console.log('📞 Ending call:', currentCallId);
-      setStatusMessage('Ending call...');
-      
-      const { data, error } = await supabase.functions.invoke('end-call', {
-        body: { callId: currentCallId }
+      await backendService.update('calls', currentCallId, {
+        status: 'completed',
+        completed_at: new Date().toISOString()
       });
-
-      if (error) {
-        console.error('📞 Error ending call via edge function:', error);
-        // Don't throw error, just continue with UI reset
-      }
-
-      if (data?.success) {
-        setStatusMessage('Call ended successfully');
-        showSuccessToast('Call ended successfully');
-      } else {
-        setStatusMessage('Call ended');
-        // Still show success since call might already be ended
-        showSuccessToast('Call ended');
-      }
       
-      // Reset UI regardless of API response
-      setTimeout(() => {
-        setCallStatus('idle');
-        setCurrentCallId(null);
-        setPhoneNumber('');
-        setSelectedAssistantId('');
-        setStatusMessage('');
-      }, 2000);
-      
-    } catch (error) {
-      console.error('📞 Error ending call:', error);
+      setCallStatus('ended');
       setStatusMessage('Call ended');
-      showSuccessToast('Call ended');
       
-      // Still reset the UI
       setTimeout(() => {
         setCallStatus('idle');
         setCurrentCallId(null);
@@ -226,26 +131,23 @@ const CallInterface: React.FC<CallInterfaceProps> = ({ assistants }) => {
         setSelectedAssistantId('');
         setStatusMessage('');
       }, 2000);
+      
+      showSuccessToast('Call ended');
+    } catch (error) {
+      console.error('Error ending call:', error);
+      showErrorToast('Failed to end call');
     }
   };
 
   const formatPhoneNumber = (value: string) => {
     const digits = value.replace(/\D/g, '');
-    
     if (digits.length >= 10) {
-      const country = digits.length > 10 ? digits.slice(0, -10) : '1';
+      const country = digits.length === 11 && digits[0] === '1' ? digits[0] : '1';
       const area = digits.slice(-10, -7);
-      const prefix = digits.slice(-7, -4);
-      const line = digits.slice(-4);
-      
-      let formatted = `+${country}`;
-      if (area) formatted += ` (${area}`;
-      if (prefix) formatted += `) ${prefix}`;
-      if (line) formatted += `-${line}`;
-      
-      return formatted;
+      const first = digits.slice(-7, -4);
+      const last = digits.slice(-4);
+      return `+${country} (${area}) ${first}-${last}`;
     }
-    
     return value;
   };
 
@@ -254,228 +156,111 @@ const CallInterface: React.FC<CallInterfaceProps> = ({ assistants }) => {
     setPhoneNumber(formatted);
   };
 
-  const getButtonConfig = () => {
-    switch (callStatus) {
-      case 'initiating':
-        return {
-          text: 'Initiating...',
-          icon: PhoneCall,
-          disabled: true,
-          variant: 'default' as const
-        };
-      case 'calling':
-        return {
-          text: 'Calling...',
-          icon: PhoneCall,
-          disabled: true,
-          variant: 'default' as const
-        };
-      case 'in-call':
-        return {
-          text: 'In Call...',
-          icon: PhoneCall,
-          disabled: true,
-          variant: 'destructive' as const
-        };
-      case 'ended':
-        return {
-          text: 'Call Ended',
-          icon: PhoneOff,
-          disabled: true,
-          variant: 'secondary' as const
-        };
-      default:
-        return {
-          text: 'Make Call',
-          icon: Phone,
-          disabled: false,
-          variant: 'default' as const
-        };
-    }
-  };
-
-  const buttonConfig = getButtonConfig();
-  const ButtonIcon = buttonConfig.icon;
-
-  const showEndCallButton = callStatus === 'calling' || callStatus === 'in-call';
-
   return (
-    <Card className="shadow-lg">
-      <CardHeader>
-        <CardTitle className="flex items-center gap-2">
-          <Phone className="h-5 w-5 text-blue-600" />
-          Voice AI Interface
-        </CardTitle>
-      </CardHeader>
-      
-      <CardContent>
-        <Tabs defaultValue="outbound" className="w-full">
-          <TabsList className="grid w-full grid-cols-3">
-            <TabsTrigger value="outbound">Outbound Calls</TabsTrigger>
-            <TabsTrigger value="browser">Browser Voice Test</TabsTrigger>
-            <TabsTrigger value="realtime">LavaBall Realtime</TabsTrigger>
-          </TabsList>
-          
-          <TabsContent value="outbound" className="space-y-4">
+    <div className="space-y-6">
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Phone className="h-5 w-5" />
+            Voice Call Interface
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="space-y-2">
-              <Label htmlFor="assistant-select">Select AI Agent</Label>
+              <Label htmlFor="phone">Phone Number</Label>
+              <Input
+                id="phone"
+                type="tel"
+                value={phoneNumber}
+                onChange={handlePhoneNumberChange}
+                placeholder="+1 (555) 123-4567"
+                disabled={callStatus !== 'idle'}
+              />
+            </div>
+            
+            <div className="space-y-2">
+              <Label htmlFor="assistant">Select Assistant</Label>
               <Select 
                 value={selectedAssistantId} 
                 onValueChange={setSelectedAssistantId}
                 disabled={callStatus !== 'idle'}
               >
-                <SelectTrigger id="assistant-select">
-                  <SelectValue placeholder="Choose an AI agent for the call" />
+                <SelectTrigger>
+                  <SelectValue placeholder="Choose an assistant" />
                 </SelectTrigger>
                 <SelectContent>
                   {assistants.map((assistant) => (
                     <SelectItem key={assistant.id} value={assistant.id}>
-                      <div className="flex flex-col">
-                        <span className="font-medium">{assistant.name}</span>
-                        <span className="text-xs text-gray-500">
-                          {assistant.voice_provider} • {assistant.model}
-                        </span>
-                      </div>
+                      {assistant.name}
                     </SelectItem>
                   ))}
                 </SelectContent>
               </Select>
             </div>
+          </div>
 
-            {selectedAssistant && (
-              <div className="p-3 bg-gray-50 rounded-md">
-                <p className="text-sm font-medium text-gray-700 mb-1">Selected Agent:</p>
-                <p className="text-sm text-gray-600 mb-2">{selectedAssistant.name}</p>
-                <p className="text-xs text-gray-500">
-                  First message: "{selectedAssistant.first_message || 'Default greeting'}"
-                </p>
+          {statusMessage && (
+            <div className="p-3 bg-blue-50 border border-blue-200 rounded-lg">
+              <div className="flex items-center gap-2">
+                <Activity className="h-4 w-4 text-blue-500" />
+                <span className="text-sm text-blue-800">{statusMessage}</span>
               </div>
-            )}
-
-            <div className="space-y-2">
-              <Label htmlFor="phone-number">Phone Number</Label>
-              <Input
-                id="phone-number"
-                type="tel"
-                placeholder="+1 (555) 123-4567"
-                value={phoneNumber}
-                onChange={handlePhoneNumberChange}
-                disabled={callStatus !== 'idle'}
-              />
-              <p className="text-xs text-gray-500">
-                Enter the phone number to call. Format will be converted to E.164 automatically.
-              </p>
             </div>
+          )}
 
-            {/* Call Status Indicator */}
-            {callStatus !== 'idle' && (
-              <div className="p-3 bg-blue-50 border border-blue-200 rounded-md">
-                <div className="flex items-center gap-2">
-                  <div className="w-2 h-2 bg-blue-500 rounded-full animate-pulse"></div>
-                  <span className="text-sm font-medium text-blue-700">
-                    {statusMessage || 'Processing...'}
-                  </span>
-                </div>
-                {callStatus === 'initiating' && (
-                  <div className="mt-2 text-xs text-blue-600">
-                    ℹ️ Initializing call with assistant "{selectedAssistant?.name}"...
-                  </div>
-                )}
-              </div>
-            )}
-
-            {/* Enhanced debugging info */}
-            {callStatus === 'idle' && phoneNumber && (
-              <div className="p-3 bg-gray-50 border border-gray-200 rounded-md">
-                <div className="text-xs text-gray-600 space-y-1">
-                  <div>💡 Debug Info:</div>
-                  <div>• Display Format: {phoneNumber}</div>
-                  <div>• E.164 Format: {formatToE164(phoneNumber)}</div>
-                  <div>• Selected Assistant: {selectedAssistant?.name || 'None'}</div>
-                  <div>• Call Status: {callStatus}</div>
-                </div>
-              </div>
-            )}
-
-            {/* Call Action Buttons */}
-            <div className="flex gap-3">
+          <div className="flex gap-2">
+            {callStatus === 'idle' && (
               <Button
                 onClick={handleMakeCall}
+                disabled={!phoneNumber.trim() || !selectedAssistantId}
                 className="flex-1"
-                disabled={buttonConfig.disabled || !phoneNumber.trim() || !selectedAssistantId}
-                variant={buttonConfig.variant}
               >
-                <ButtonIcon className="w-4 h-4 mr-2" />
-                {buttonConfig.text}
+                <PhoneCall className="h-4 w-4 mr-2" />
+                Make Call
               </Button>
-
-              {showEndCallButton && (
-                <Button
-                  onClick={handleEndCall}
-                  variant="destructive"
-                  className="flex items-center gap-2"
-                >
-                  <PhoneOff className="w-4 h-4" />
-                  End Call
-                </Button>
-              )}
-            </div>
-
-            {assistants.length === 0 && (
-              <div className="text-center py-4">
-                <p className="text-gray-500 text-sm">No AI agents available</p>
-                <p className="text-gray-400 text-xs">Create an AI agent first to make calls</p>
-              </div>
             )}
-
-            {/* Troubleshooting section */}
-            {callStatus === 'idle' && (!phoneNumber.trim() || !selectedAssistantId) && (
-              <div className="flex items-start gap-2 p-3 bg-yellow-50 rounded-md">
-                <AlertCircle className="h-4 w-4 text-yellow-600 mt-0.5 flex-shrink-0" />
-                <div className="text-sm text-yellow-800">
-                  <div className="font-medium">Requirements:</div>
-                  <ul className="list-disc list-inside mt-1 space-y-1">
-                    <li>Select an AI agent from the dropdown</li>
-                    <li>Enter a valid phone number (10+ digits)</li>
-                    <li>Ensure the agent has proper voice configuration</li>
-                  </ul>
-                </div>
-              </div>
+            
+            {(callStatus === 'calling' || callStatus === 'in-call') && (
+              <Button
+                onClick={handleEndCall}
+                variant="destructive"
+                className="flex-1"
+              >
+                <PhoneOff className="h-4 w-4 mr-2" />
+                End Call
+              </Button>
             )}
-          </TabsContent>
-          
-          <TabsContent value="browser" className="space-y-4">
-            <div className="space-y-4">
-              <div className="flex items-center gap-2 text-sm text-gray-600">
-                <Mic className="h-4 w-4" />
-                <span>Test voice AI directly in your browser (legacy)</span>
-              </div>
-              
-              <VoiceInterface 
-                callId="browser-test"
-                assistantId={selectedAssistantId || 'demo'}
-                className="border-0 shadow-none"
-              />
-            </div>
-          </TabsContent>
+          </div>
 
-          <TabsContent value="realtime" className="space-y-4">
-            <div className="space-y-4">
-              <div className="flex items-center gap-2 text-sm text-gray-600">
-                <Activity className="h-4 w-4" />
-                <span>Real-time voice conversation with LavaBall AI</span>
+          {selectedAssistant && (
+            <div className="mt-4 p-3 bg-gray-50 rounded-lg">
+              <h4 className="font-semibold mb-2">Selected Assistant: {selectedAssistant.name}</h4>
+              <p className="text-sm text-gray-600">{selectedAssistant.system_prompt?.substring(0, 150)}...</p>
+              <div className="flex gap-4 mt-2 text-xs text-gray-500">
+                <span>Voice: {selectedAssistant.voice_id}</span>
+                <span>Model: {selectedAssistant.model}</span>
               </div>
-              
-              <RealtimeVoiceInterface 
-                callId="realtime-test"
-                assistantId={selectedAssistantId || 'demo'}
-                className="border-0 shadow-none"
-              />
             </div>
-          </TabsContent>
-        </Tabs>
-      </CardContent>
-    </Card>
+          )}
+        </CardContent>
+      </Card>
+
+      <Tabs defaultValue="voice" className="space-y-4">
+        <TabsList>
+          <TabsTrigger value="voice">Voice Interface</TabsTrigger>
+          <TabsTrigger value="realtime">Real-time Voice</TabsTrigger>
+        </TabsList>
+        
+        <TabsContent value="voice">
+          <VoiceInterface />
+        </TabsContent>
+        
+        <TabsContent value="realtime">
+          <RealtimeVoiceInterface />
+        </TabsContent>
+      </Tabs>
+    </div>
   );
 };
 

@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -7,7 +6,7 @@ import { ChainMonitoringDashboard } from '@/components/AgentOrchestration/ChainM
 import { AgentChainDialog } from '@/components/AgentOrchestration/AgentChainDialog';
 import { useChainExecution } from '@/hooks/useChainExecution';
 import { useAssistants } from '@/hooks/useAssistants';
-import { supabase } from '@/lib/supabase';
+import { backendService } from '@/services/BackendService';
 import { Plus, Play, TrendingUp, Monitor, Zap, GitBranch } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 
@@ -51,13 +50,10 @@ export const AgentOrchestration: React.FC = () => {
     try {
       setIsLoading(true);
       
-      const { data, error } = await supabase
-        .from('agent_chains')
-        .select('*')
-        .order('created_at', { ascending: false });
+      const data = await backendService.select('agent_chains', {
+        orderBy: { column: 'created_at', ascending: false }
+      });
 
-      if (error) throw error;
-      
       setChains(data || []);
       
       // Calculate stats
@@ -84,14 +80,10 @@ export const AgentOrchestration: React.FC = () => {
   const loadStats = async () => {
     try {
       // Load execution stats
-      const { data: executions, error } = await supabase
-        .from('chain_executions')
-        .select('status');
-
-      if (error) throw error;
+      const executions = await backendService.select('chain_executions');
 
       const totalExecutions = executions?.length || 0;
-      const successfulExecutions = executions?.filter(e => e.status === 'completed').length || 0;
+      const successfulExecutions = executions?.filter((e: any) => e.status === 'completed').length || 0;
       const successRate = totalExecutions > 0 ? Math.round((successfulExecutions / totalExecutions) * 100) : 0;
 
       setStats(prev => ({
@@ -106,19 +98,13 @@ export const AgentOrchestration: React.FC = () => {
 
   const handleCreateChain = async (chainData: any) => {
     try {
-      const { data: { user } } = await supabase.auth.getUser();
+      const user = await backendService.getCurrentUser();
       if (!user) throw new Error('User not authenticated');
 
-      const { data, error } = await supabase
-        .from('agent_chains')
-        .insert({
-          ...chainData,
-          user_id: user.id
-        })
-        .select()
-        .single();
-
-      if (error) throw error;
+      const data = await backendService.insert('agent_chains', {
+        ...chainData,
+        user_id: user.id
+      });
 
       setChains(prev => [data, ...prev]);
       
@@ -149,12 +135,10 @@ export const AgentOrchestration: React.FC = () => {
 
   const toggleChainStatus = async (chainId: string, isActive: boolean) => {
     try {
-      const { error } = await supabase
-        .from('agent_chains')
-        .update({ is_active: !isActive, updated_at: new Date().toISOString() })
-        .eq('id', chainId);
-
-      if (error) throw error;
+      await backendService.update('agent_chains', chainId, { 
+        is_active: !isActive, 
+        updated_at: new Date().toISOString() 
+      });
 
       setChains(prev =>
         prev.map(chain =>

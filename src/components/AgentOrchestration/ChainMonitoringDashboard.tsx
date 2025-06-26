@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -14,7 +13,7 @@ import {
   TrendingUp
 } from 'lucide-react';
 import { ChainExecution } from '@/services/chainExecution.service';
-import { supabase } from '@/lib/supabase';
+import { backendService } from '@/services/BackendService';
 
 interface ChainMonitoringDashboardProps {
   chainId?: string;
@@ -37,25 +36,14 @@ export const ChainMonitoringDashboard: React.FC<ChainMonitoringDashboardProps> =
     loadExecutions();
     loadStats();
 
-    // Set up real-time subscription
-    const channel = supabase
-      .channel('chain-executions')
-      .on('postgres_changes', 
-        { 
-          event: '*', 
-          schema: 'public', 
-          table: 'chain_executions',
-          filter: chainId ? `chain_id=eq.${chainId}` : undefined
-        }, 
-        () => {
-          loadExecutions();
-          loadStats();
-        }
-      )
-      .subscribe();
+    // Set up polling for real-time updates (since we removed Supabase subscriptions)
+    const interval = setInterval(() => {
+      loadExecutions();
+      loadStats();
+    }, 5000);
 
     return () => {
-      supabase.removeChannel(channel);
+      clearInterval(interval);
     };
   }, [chainId]);
 
@@ -63,26 +51,13 @@ export const ChainMonitoringDashboard: React.FC<ChainMonitoringDashboardProps> =
     try {
       setIsLoading(true);
       
-      let query = supabase
-        .from('chain_executions')
-        .select(`
-          *,
-          agent_chains!inner (
-            name,
-            description
-          )
-        `)
-        .order('started_at', { ascending: false })
-        .limit(50);
+      const query = chainId ? { where: { chain_id: chainId } } : {};
+      const data = await backendService.select('chain_executions', {
+        ...query,
+        orderBy: { column: 'started_at', ascending: false },
+        limit: 50
+      });
 
-      if (chainId) {
-        query = query.eq('chain_id', chainId);
-      }
-
-      const { data, error } = await query;
-
-      if (error) throw error;
-      
       setExecutions(data || []);
     } catch (error) {
       console.error('Error loading executions:', error);
@@ -93,34 +68,25 @@ export const ChainMonitoringDashboard: React.FC<ChainMonitoringDashboardProps> =
 
   const loadStats = async () => {
     try {
-      let query = supabase
-        .from('chain_executions')
-        .select('status, started_at, completed_at');
-
-      if (chainId) {
-        query = query.eq('chain_id', chainId);
-      }
-
-      const { data, error } = await query;
-
-      if (error) throw error;
+      const query = chainId ? { where: { chain_id: chainId } } : {};
+      const data = await backendService.select('chain_executions', query);
 
       const total = data?.length || 0;
-      const running = data?.filter(e => e.status === 'running').length || 0;
-      const completed = data?.filter(e => e.status === 'completed').length || 0;
-      const failed = data?.filter(e => ['failed', 'timeout'].includes(e.status)).length || 0;
+      const running = data?.filter((e: any) => e.status === 'running').length || 0;
+      const completed = data?.filter((e: any) => e.status === 'completed').length || 0;
+      const failed = data?.filter((e: any) => ['failed', 'timeout'].includes(e.status)).length || 0;
       
       // Calculate average duration for completed executions
       const completedWithDuration = data
-        ?.filter(e => e.status === 'completed' && e.completed_at)
-        .map(e => {
+        ?.filter((e: any) => e.status === 'completed' && e.completed_at)
+        .map((e: any) => {
           const start = new Date(e.started_at).getTime();
           const end = new Date(e.completed_at).getTime();
           return (end - start) / 1000; // seconds
         }) || [];
 
       const avgDuration = completedWithDuration.length > 0
-        ? Math.round(completedWithDuration.reduce((a, b) => a + b, 0) / completedWithDuration.length)
+        ? Math.round(completedWithDuration.reduce((a: number, b: number) => a + b, 0) / completedWithDuration.length)
         : 0;
 
       const successRate = total > 0 ? Math.round((completed / total) * 100) : 0;
@@ -276,7 +242,7 @@ export const ChainMonitoringDashboard: React.FC<ChainMonitoringDashboardProps> =
                           {getStatusIcon(execution.status)}
                           <div>
                             <div className="font-medium">
-                              {execution.agent_chains?.name || 'Unknown Chain'}
+                              {execution.chain_name || 'Unknown Chain'}
                             </div>
                             <div className="text-sm text-gray-500">
                               Started {formatDuration(execution.started_at)} ago
