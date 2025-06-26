@@ -1082,6 +1082,10 @@ export type Database = {
           message_timestamp: string
         }[]
       }
+      is_team_owner: {
+        Args: { team_uuid: string; user_uuid?: string }
+        Returns: boolean
+      }
       safe_delete_assistant: {
         Args: { assistant_uuid: string }
         Returns: boolean
