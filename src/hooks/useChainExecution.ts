@@ -1,5 +1,5 @@
 
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { ChainExecutionService, ChainExecution } from '@/services/chainExecution.service';
 
 export const useChainExecution = () => {

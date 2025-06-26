@@ -48,7 +48,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setIsLoading(true);
     try {
       const session = await backendService.signIn(credentials.email, credentials.password);
-      setUser(session || null);
+      setUser(session);
       navigate('/dashboard');
     } catch (error) {
       console.error('Login failed:', error);
@@ -61,8 +61,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const register = async (userData: { email: string; password: string; name?: string }): Promise<void> => {
     setIsLoading(true);
     try {
-      const session = await backendService.signUp(userData.email, userData.password, userData);
-      setUser(session || null);
+      const session = await backendService.signUp(userData.email, userData.password);
+      setUser(session);
       navigate('/dashboard');
     } catch (error) {
       console.error('Registration failed:', error);
@@ -84,8 +84,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     await new Promise(resolve => setTimeout(resolve, 1000));
   };
 
-  const updatePassword = async (newPassword: string): Promise<void> => {
-    console.log('Password update requested for new password');
+  const updatePassword = async (password: string): Promise<void> => {
+    console.log('Password update requested');
     // Simulate password update in local mode
     setUser((prev: any) => prev ? { ...prev, updated_at: new Date().toISOString() } : null);
     await new Promise(resolve => setTimeout(resolve, 1000));

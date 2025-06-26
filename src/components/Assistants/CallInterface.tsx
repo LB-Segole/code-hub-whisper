@@ -6,20 +6,21 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Phone, PhoneCall, PhoneOff, Activity } from 'lucide-react';
+import { Phone, PhoneCall, PhoneOff, Activity, X } from 'lucide-react';
 import { backendService } from '@/services/BackendService';
 import { showErrorToast, showSuccessToast } from '@/utils/errorHandling';
-import { Assistant } from '@/types/assistant';
+import { Assistant } from '@/hooks/useAssistants';
 import VoiceInterface from '@/components/VoiceInterface';
 import RealtimeVoiceInterface from '@/components/RealtimeVoiceInterface';
 
 interface CallInterfaceProps {
   assistants: Assistant[];
+  onClose?: () => void;
 }
 
 type CallStatus = 'idle' | 'initiating' | 'calling' | 'in-call' | 'ended';
 
-const CallInterface: React.FC<CallInterfaceProps> = ({ assistants }) => {
+const CallInterface: React.FC<CallInterfaceProps> = ({ assistants, onClose }) => {
   const [phoneNumber, setPhoneNumber] = useState('');
   const [selectedAssistantId, setSelectedAssistantId] = useState('');
   const [callStatus, setCallStatus] = useState<CallStatus>('idle');
@@ -157,109 +158,126 @@ const CallInterface: React.FC<CallInterfaceProps> = ({ assistants }) => {
   };
 
   return (
-    <div className="space-y-6">
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Phone className="h-5 w-5" />
-            Voice Call Interface
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div className="space-y-2">
-              <Label htmlFor="phone">Phone Number</Label>
-              <Input
-                id="phone"
-                type="tel"
-                value={phoneNumber}
-                onChange={handlePhoneNumberChange}
-                placeholder="+1 (555) 123-4567"
-                disabled={callStatus !== 'idle'}
-              />
-            </div>
-            
-            <div className="space-y-2">
-              <Label htmlFor="assistant">Select Assistant</Label>
-              <Select 
-                value={selectedAssistantId} 
-                onValueChange={setSelectedAssistantId}
-                disabled={callStatus !== 'idle'}
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="Choose an assistant" />
-                </SelectTrigger>
-                <SelectContent>
-                  {assistants.map((assistant) => (
-                    <SelectItem key={assistant.id} value={assistant.id}>
-                      {assistant.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-          </div>
-
-          {statusMessage && (
-            <div className="p-3 bg-blue-50 border border-blue-200 rounded-lg">
-              <div className="flex items-center gap-2">
-                <Activity className="h-4 w-4 text-blue-500" />
-                <span className="text-sm text-blue-800">{statusMessage}</span>
-              </div>
-            </div>
-          )}
-
-          <div className="flex gap-2">
-            {callStatus === 'idle' && (
-              <Button
-                onClick={handleMakeCall}
-                disabled={!phoneNumber.trim() || !selectedAssistantId}
-                className="flex-1"
-              >
-                <PhoneCall className="h-4 w-4 mr-2" />
-                Make Call
-              </Button>
-            )}
-            
-            {(callStatus === 'calling' || callStatus === 'in-call') && (
-              <Button
-                onClick={handleEndCall}
-                variant="destructive"
-                className="flex-1"
-              >
-                <PhoneOff className="h-4 w-4 mr-2" />
-                End Call
+    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+      <div className="bg-white rounded-lg w-full max-w-4xl max-h-[90vh] overflow-y-auto">
+        <div className="p-6 space-y-6">
+          {/* Header */}
+          <div className="flex justify-between items-center">
+            <h2 className="text-2xl font-bold flex items-center gap-2">
+              <Phone className="h-6 w-6" />
+              Voice Call Interface
+            </h2>
+            {onClose && (
+              <Button variant="outline" onClick={onClose}>
+                <X className="h-4 w-4" />
               </Button>
             )}
           </div>
 
-          {selectedAssistant && (
-            <div className="mt-4 p-3 bg-gray-50 rounded-lg">
-              <h4 className="font-semibold mb-2">Selected Assistant: {selectedAssistant.name}</h4>
-              <p className="text-sm text-gray-600">{selectedAssistant.system_prompt?.substring(0, 150)}...</p>
-              <div className="flex gap-4 mt-2 text-xs text-gray-500">
-                <span>Voice: {selectedAssistant.voice_id}</span>
-                <span>Model: {selectedAssistant.model}</span>
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Phone className="h-5 w-5" />
+                Make a Call
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="phone">Phone Number</Label>
+                  <Input
+                    id="phone"
+                    type="tel"
+                    value={phoneNumber}
+                    onChange={handlePhoneNumberChange}
+                    placeholder="+1 (555) 123-4567"
+                    disabled={callStatus !== 'idle'}
+                  />
+                </div>
+                
+                <div className="space-y-2">
+                  <Label htmlFor="assistant">Select Assistant</Label>
+                  <Select 
+                    value={selectedAssistantId} 
+                    onValueChange={setSelectedAssistantId}
+                    disabled={callStatus !== 'idle'}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Choose an assistant" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {assistants.map((assistant) => (
+                        <SelectItem key={assistant.id} value={assistant.id}>
+                          {assistant.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
               </div>
-            </div>
-          )}
-        </CardContent>
-      </Card>
 
-      <Tabs defaultValue="voice" className="space-y-4">
-        <TabsList>
-          <TabsTrigger value="voice">Voice Interface</TabsTrigger>
-          <TabsTrigger value="realtime">Real-time Voice</TabsTrigger>
-        </TabsList>
-        
-        <TabsContent value="voice">
-          <VoiceInterface />
-        </TabsContent>
-        
-        <TabsContent value="realtime">
-          <RealtimeVoiceInterface />
-        </TabsContent>
-      </Tabs>
+              {statusMessage && (
+                <div className="p-3 bg-blue-50 border border-blue-200 rounded-lg">
+                  <div className="flex items-center gap-2">
+                    <Activity className="h-4 w-4 text-blue-500" />
+                    <span className="text-sm text-blue-800">{statusMessage}</span>
+                  </div>
+                </div>
+              )}
+
+              <div className="flex gap-2">
+                {callStatus === 'idle' && (
+                  <Button
+                    onClick={handleMakeCall}
+                    disabled={!phoneNumber.trim() || !selectedAssistantId}
+                    className="flex-1"
+                  >
+                    <PhoneCall className="h-4 w-4 mr-2" />
+                    Make Call
+                  </Button>
+                )}
+                
+                {(callStatus === 'calling' || callStatus === 'in-call') && (
+                  <Button
+                    onClick={handleEndCall}
+                    variant="destructive"
+                    className="flex-1"
+                  >
+                    <PhoneOff className="h-4 w-4 mr-2" />
+                    End Call
+                  </Button>
+                )}
+              </div>
+
+              {selectedAssistant && (
+                <div className="mt-4 p-3 bg-gray-50 rounded-lg">
+                  <h4 className="font-semibold mb-2">Selected Assistant: {selectedAssistant.name}</h4>
+                  <p className="text-sm text-gray-600">{selectedAssistant.system_prompt?.substring(0, 150)}...</p>
+                  <div className="flex gap-4 mt-2 text-xs text-gray-500">
+                    <span>Voice: {selectedAssistant.voice_id}</span>
+                    <span>Model: {selectedAssistant.model}</span>
+                  </div>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+
+          <Tabs defaultValue="voice" className="space-y-4">
+            <TabsList>
+              <TabsTrigger value="voice">Voice Interface</TabsTrigger>
+              <TabsTrigger value="realtime">Real-time Voice</TabsTrigger>
+            </TabsList>
+            
+            <TabsContent value="voice">
+              <VoiceInterface />
+            </TabsContent>
+            
+            <TabsContent value="realtime">
+              <RealtimeVoiceInterface />
+            </TabsContent>
+          </Tabs>
+        </div>
+      </div>
     </div>
   );
 };

@@ -7,50 +7,72 @@ import AssistantForm from '@/components/Assistants/AssistantForm';
 import AssistantCard from '@/components/Assistants/AssistantCard';
 import CallInterface from '@/components/Assistants/CallInterface';
 import { useAssistants } from '@/hooks/useAssistants';
-import { Assistant, AssistantFormData } from '@/types/assistant';
+import { Assistant, AssistantFormData } from '@/hooks/useAssistants';
 import { toast } from 'sonner';
 
 const Assistants = () => {
   const navigate = useNavigate();
   const { assistants, isLoading, createAssistant, updateAssistant, deleteAssistant } = useAssistants();
   const [showForm, setShowForm] = useState(false);
-  const [editingAssistant, setEditingAssistant] = useState<Assistant | undefined>(undefined);
+  const [editingAssistant, setEditingAssistant] = useState<Assistant | null>(null);
   const [callingAssistant, setCallingAssistant] = useState<Assistant | null>(null);
+  const [formData, setFormData] = useState<AssistantFormData>({
+    name: '',
+    system_prompt: '',
+    first_message: '',
+    voice_provider: 'deepgram',
+    voice_id: 'aura-asteria-en',
+    model: 'nova-2',
+    temperature: 0.8,
+    max_tokens: 500,
+  });
 
-  const handleCreateAssistant = async (assistantData: AssistantFormData) => {
+  const handleSubmit = async () => {
     try {
-      const newAssistant = await createAssistant(assistantData);
-      if (newAssistant) {
-        setShowForm(false);
+      if (editingAssistant) {
+        await updateAssistant(editingAssistant.id, formData);
+        toast.success('Assistant updated successfully!');
+      } else {
+        await createAssistant(formData);
         toast.success('Assistant created successfully!');
       }
-    } catch (error) {
-      toast.error('Failed to create assistant');
-    }
-  };
-
-  const handleUpdateAssistant = async (assistantData: AssistantFormData) => {
-    if (!editingAssistant) return;
-    
-    try {
-      await updateAssistant(editingAssistant.id, assistantData);
-      setEditingAssistant(undefined);
       setShowForm(false);
-      toast.success('Assistant updated successfully!');
+      setEditingAssistant(null);
+      // Reset form
+      setFormData({
+        name: '',
+        system_prompt: '',
+        first_message: '',
+        voice_provider: 'deepgram',
+        voice_id: 'aura-asteria-en',
+        model: 'nova-2',
+        temperature: 0.8,
+        max_tokens: 500,
+      });
     } catch (error) {
-      toast.error('Failed to update assistant');
+      toast.error(editingAssistant ? 'Failed to update assistant' : 'Failed to create assistant');
     }
   };
 
   const handleEdit = (assistant: Assistant) => {
     setEditingAssistant(assistant);
+    setFormData({
+      name: assistant.name,
+      system_prompt: assistant.system_prompt,
+      first_message: assistant.first_message || '',
+      voice_provider: assistant.voice_provider,
+      voice_id: assistant.voice_id,
+      model: assistant.model,
+      temperature: assistant.temperature,
+      max_tokens: assistant.max_tokens,
+    });
     setShowForm(true);
   };
 
-  const handleDelete = async (assistant: Assistant) => {
+  const handleDelete = async (id: string) => {
     if (confirm('Are you sure you want to delete this assistant?')) {
       try {
-        await deleteAssistant(assistant.id);
+        await deleteAssistant(id);
         toast.success('Assistant deleted successfully!');
       } catch (error) {
         toast.error('Failed to delete assistant');
@@ -58,13 +80,28 @@ const Assistants = () => {
     }
   };
 
-  const handleCall = (assistant: Assistant) => {
+  const handleStartVoiceChat = (assistant: Assistant) => {
+    console.log('Starting voice chat with:', assistant.name);
+    // TODO: Implement voice chat functionality
+  };
+
+  const handleMakeCall = (assistant: Assistant) => {
     setCallingAssistant(assistant);
   };
 
   const handleCancel = () => {
     setShowForm(false);
-    setEditingAssistant(undefined);
+    setEditingAssistant(null);
+    setFormData({
+      name: '',
+      system_prompt: '',
+      first_message: '',
+      voice_provider: 'deepgram',
+      voice_id: 'aura-asteria-en',
+      model: 'nova-2',
+      temperature: 0.8,
+      max_tokens: 500,
+    });
   };
 
   if (isLoading) {
@@ -105,9 +142,12 @@ const Assistants = () => {
         {showForm && (
           <div className="mb-8">
             <AssistantForm
-              assistant={editingAssistant}
-              onSubmit={editingAssistant ? handleUpdateAssistant : handleCreateAssistant}
+              formData={formData}
+              setFormData={setFormData}
+              onSubmit={handleSubmit}
               onCancel={handleCancel}
+              isSubmitting={false}
+              editingAssistant={editingAssistant}
             />
           </div>
         )}
@@ -121,7 +161,8 @@ const Assistants = () => {
                 assistant={assistant}
                 onEdit={handleEdit}
                 onDelete={handleDelete}
-                onCall={handleCall}
+                onStartVoiceChat={handleStartVoiceChat}
+                onMakeCall={handleMakeCall}
               />
             ))}
           </div>
@@ -142,7 +183,7 @@ const Assistants = () => {
       {/* Call Interface */}
       {callingAssistant && (
         <CallInterface
-          assistant={callingAssistant}
+          assistants={[callingAssistant]}
           onClose={() => setCallingAssistant(null)}
         />
       )}
