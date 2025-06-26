@@ -7,6 +7,7 @@
 export interface AuthUser {
   id: string;
   email?: string;
+  user_metadata?: Record<string, any>;
   metadata?: Record<string, any>;
 }
 
@@ -34,7 +35,7 @@ export interface WebSocketMessage {
 
 // Auth Adapter Interface
 export interface AuthAdapter {
-  signUp(email: string, password: string): Promise<AuthUser>;
+  signUp(email: string, password: string, metadata?: any): Promise<AuthUser>;
   signIn(email: string, password: string): Promise<AuthUser>;
   signOut(): Promise<void>;
   getCurrentUser(): Promise<AuthUser | null>;
@@ -64,8 +65,14 @@ export interface WebSocketAdapter {
 
 // Voice Service Adapter Interface
 export interface VoiceServiceAdapter {
-  createWebSocketUrl(path: string, params?: Record<string, string>): string;
+  createVoiceWebSocketUrl(path: string, params?: Record<string, string>): string;
   processAudioData(audioData: Float32Array): string;
-  handleVoiceMessage(message: any): WebSocketMessage;
+  handleVoiceMessage(message: any): void;
   getCurrentBackendType(): string;
+  isRailwayBackend(): boolean;
+  isSupabaseBackend(): boolean;
+  isLocalBackend(): boolean;
 }
+
+// Combined Backend Adapter Interface
+export interface BackendAdapter extends AuthAdapter, DatabaseAdapter, VoiceServiceAdapter {}

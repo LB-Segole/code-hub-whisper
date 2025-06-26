@@ -1,3 +1,4 @@
+
 /**
  * Main Backend Service - Migration Interface
  * 
@@ -7,70 +8,29 @@
  * MIGRATION GUIDE:
  * ================
  * 
- * Current State: Uses SupabaseAdapters
- * Future State: Switch to RailwayAdapters
+ * Current State: Uses LocalAdapter for local development
+ * Future State: Can switch to Railway or Supabase as needed
  * 
- * To migrate to Railway:
- * 1. Update BACKEND_TYPE to 'railway'
- * 2. Set RAILWAY_BASE_URL to your Railway deployment
- * 3. Implement any missing methods in RailwayAdapters
- * 4. Test each service method thoroughly
- * 5. No changes needed in React components!
+ * To migrate backends:
+ * 1. Update environment variables
+ * 2. No changes needed in React components!
  */
 
 import { 
-  AuthAdapter,
-  DatabaseAdapter, 
-  VoiceServiceAdapter,
+  BackendAdapter,
   AuthUser,
   DatabaseRecord 
 } from './adapters/types';
 
-import SupabaseAdapter from './adapters/SupabaseAdapter';
-import RailwayAdapter from './adapters/RailwayAdapter';
 import LocalAdapter from './adapters/LocalAdapter';
-
-// Migration Configuration
-// =====================
-// Change these values to switch backends
-const BACKEND_TYPE: 'supabase' | 'railway' = 'supabase';
-const RAILWAY_BASE_URL = 'https://your-railway-app.railway.app'; // Update when migrating
-const RAILWAY_WS_URL = 'wss://your-railway-app.railway.app'; // Update when migrating
 
 export class BackendService {
   private adapter: BackendAdapter;
 
   constructor() {
-    // Determine which backend to use based on environment
-    const backendType = this.getBackendType();
-    
-    switch (backendType) {
-      case 'local':
-        this.adapter = new LocalAdapter();
-        break;
-      case 'railway':
-        this.adapter = new RailwayAdapter();
-        break;
-      case 'supabase':
-      default:
-        this.adapter = new SupabaseAdapter();
-        break;
-    }
-  }
-
-  private getBackendType(): string {
-    // Check if we're in local development mode
-    if (import.meta.env.VITE_USE_LOCAL_BACKEND === 'true') {
-      return 'local';
-    }
-    
-    // Check for Railway environment
-    if (import.meta.env.VITE_RAILWAY_BACKEND_URL) {
-      return 'railway';
-    }
-    
-    // Default to Supabase
-    return 'supabase';
+    // For now, we'll use LocalAdapter as the default
+    // In the future, this can be switched based on environment variables
+    this.adapter = new LocalAdapter();
   }
 
   // Auth methods
@@ -148,4 +108,4 @@ export class BackendService {
 
 // Export singleton instance
 export const backendService = new BackendService();
-export { AuthUser, DatabaseRecord };
+export type { AuthUser, DatabaseRecord };

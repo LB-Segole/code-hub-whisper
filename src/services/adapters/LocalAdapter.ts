@@ -12,9 +12,9 @@ class LocalAdapter implements BackendAdapter {
 
   private async request(endpoint: string, options: RequestInit = {}): Promise<any> {
     const url = `${this.baseUrl}${endpoint}`;
-    const headers: HeadersInit = {
+    const headers: Record<string, string> = {
       'Content-Type': 'application/json',
-      ...options.headers,
+      ...((options.headers as Record<string, string>) || {}),
     };
 
     if (this.token) {
@@ -133,7 +133,7 @@ class LocalAdapter implements BackendAdapter {
     });
   }
 
-  subscribe(table: string, callback: (payload: any) => void): (() => void) {
+  subscribe(_table: string, _callback: (payload: any) => void): (() => void) {
     // For local implementation, we'll use polling or WebSocket
     // For now, return a no-op cleanup function
     return () => {};
