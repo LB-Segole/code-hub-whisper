@@ -5,7 +5,7 @@ import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Search, Filter, ArrowLeft, Plus } from 'lucide-react';
+import { Search, Filter, ArrowLeft, Plus, AlertCircle, RefreshCw } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useAgentTemplates } from '@/hooks/useAgentTemplates';
 import { AgentTemplateCard } from '@/components/Marketplace/AgentTemplateCard';
@@ -13,7 +13,7 @@ import { useToast } from '@/hooks/use-toast';
 
 const Marketplace = () => {
   const navigate = useNavigate();
-  const { templates, categories, isLoading } = useAgentTemplates();
+  const { templates, categories, isLoading, error, refetch } = useAgentTemplates();
   const { toast } = useToast();
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategory, setSelectedCategory] = useState<string>('all');
@@ -74,10 +74,93 @@ const Marketplace = () => {
     });
   };
 
+  const handleRetry = async () => {
+    await refetch();
+  };
+
+  if (error) {
+    return (
+      <div className="min-h-screen bg-gray-50">
+        {/* Header */}
+        <header className="bg-white shadow-sm border-b">
+          <div className="container mx-auto px-4 py-4">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center space-x-4">
+                <Button 
+                  variant="ghost" 
+                  onClick={() => navigate('/dashboard')}
+                  className="flex items-center"
+                >
+                  <ArrowLeft className="w-4 h-4 mr-2" />
+                  Back to Dashboard
+                </Button>
+                <div>
+                  <h1 className="text-2xl font-bold text-gray-900">Agent Marketplace</h1>
+                  <p className="text-gray-600 mt-1">Discover and use pre-built AI agent templates</p>
+                </div>
+              </div>
+            </div>
+          </div>
+        </header>
+
+        <div className="container mx-auto px-4 py-8">
+          <Card className="text-center py-12">
+            <CardContent className="space-y-4">
+              <AlertCircle className="w-12 h-12 text-red-500 mx-auto" />
+              <div className="text-lg font-semibold text-gray-900">Failed to Load Templates</div>
+              <div className="text-gray-600 max-w-md mx-auto">
+                {error}
+              </div>
+              <div className="flex gap-2 justify-center">
+                <Button onClick={handleRetry} className="flex items-center">
+                  <RefreshCw className="w-4 h-4 mr-2" />
+                  Try Again
+                </Button>
+                <Button variant="outline" onClick={() => navigate('/assistants')}>
+                  <Plus className="w-4 h-4 mr-2" />
+                  Create Custom Agent
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      </div>
+    );
+  }
+
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="text-gray-500">Loading marketplace...</div>
+      <div className="min-h-screen bg-gray-50">
+        {/* Header */}
+        <header className="bg-white shadow-sm border-b">
+          <div className="container mx-auto px-4 py-4">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center space-x-4">
+                <Button 
+                  variant="ghost" 
+                  onClick={() => navigate('/dashboard')}
+                  className="flex items-center"
+                >
+                  <ArrowLeft className="w-4 h-4 mr-2" />
+                  Back to Dashboard
+                </Button>
+                <div>
+                  <h1 className="text-2xl font-bold text-gray-900">Agent Marketplace</h1>
+                  <p className="text-gray-600 mt-1">Discover and use pre-built AI agent templates</p>
+                </div>
+              </div>
+            </div>
+          </div>
+        </header>
+
+        <div className="container mx-auto px-4 py-8">
+          <div className="flex items-center justify-center py-12">
+            <div className="text-center">
+              <RefreshCw className="w-8 h-8 animate-spin text-blue-500 mx-auto mb-4" />
+              <div className="text-gray-500">Loading marketplace...</div>
+            </div>
+          </div>
+        </div>
       </div>
     );
   }

@@ -32,6 +32,15 @@ export const useAgentTemplates = () => {
   const fetchTemplates = async () => {
     try {
       console.log('🔄 Fetching agent templates...');
+      
+      // Check if user is authenticated
+      const { data: { user }, error: authError } = await supabase.auth.getUser();
+      if (authError) {
+        console.warn('⚠️ Auth error, but continuing with public templates:', authError);
+      }
+      
+      console.log('👤 Current user:', user?.id || 'anonymous');
+
       const { data, error } = await supabase
         .from('agent_templates')
         .select('*')
@@ -40,17 +49,39 @@ export const useAgentTemplates = () => {
 
       if (error) {
         console.error('❌ Error fetching templates:', error);
+        console.error('Error details:', {
+          message: error.message,
+          details: error.details,
+          hint: error.hint,
+          code: error.code
+        });
         throw error;
       }
 
       console.log('✅ Templates fetched successfully:', data?.length || 0);
-      setTemplates(data || []);
-    } catch (error) {
-      console.error('❌ Error fetching templates:', error);
-      setError('Failed to fetch templates');
+      console.log('📋 Template data:', data);
+      
+      // Ensure all templates have required fields with defaults
+      const processedTemplates = (data || []).map(template => ({
+        ...template,
+        description: template.description || 'No description available',
+        tags: template.tags || [],
+        rating_average: template.rating_average || 0,
+        rating_count: template.rating_count || 0,
+        usage_count: template.usage_count || 0,
+        downloads_count: template.downloads_count || 0,
+        version: template.version || '1.0.0'
+      }));
+      
+      setTemplates(processedTemplates);
+      setError(null);
+    } catch (error: any) {
+      console.error('❌ Error in fetchTemplates:', error);
+      setError(error.message || 'Failed to fetch templates');
+      setTemplates([]); // Set empty array on error
       toast({
         title: 'Error',
-        description: 'Failed to fetch agent templates',
+        description: `Failed to fetch agent templates: ${error.message}`,
         variant: 'destructive',
       });
     }
@@ -72,19 +103,25 @@ export const useAgentTemplates = () => {
       const uniqueCategories = [...new Set(data?.map(item => item.category) || [])];
       console.log('✅ Categories fetched successfully:', uniqueCategories);
       setCategories(uniqueCategories);
-    } catch (error) {
+    } catch (error: any) {
       console.error('❌ Error fetching categories:', error);
       setError('Failed to fetch categories');
+      setCategories([]); // Set empty array on error
     }
   };
 
   const createTemplate = async (templateData: Partial<AgentTemplate>) => {
     try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) {
+        throw new Error('You must be logged in to create templates');
+      }
+
       const { data, error } = await supabase
         .from('agent_templates')
         .insert({
           ...templateData,
-          created_by: (await supabase.auth.getUser()).data.user?.id,
+          created_by: user.id,
         })
         .select()
         .single();
@@ -98,7 +135,7 @@ export const useAgentTemplates = () => {
       });
 
       return data;
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error creating template:', error);
       toast({
         title: 'Error',
@@ -127,7 +164,7 @@ export const useAgentTemplates = () => {
       });
 
       return data;
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error updating template:', error);
       toast({
         title: 'Error',
@@ -154,7 +191,7 @@ export const useAgentTemplates = () => {
       });
 
       return true;
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error deleting template:', error);
       toast({
         title: 'Error',
@@ -168,8 +205,16 @@ export const useAgentTemplates = () => {
   useEffect(() => {
     const loadData = async () => {
       setIsLoading(true);
-      await Promise.all([fetchTemplates(), fetchCategories()]);
-      setIsLoading(false);
+      setError(null);
+      
+      try {
+        await Promise.all([fetchTemplates(), fetchCategories()]);
+      } catch (error: any) {
+        console.error('❌ Error loading data:', error);
+        setError(error.message || 'Failed to load data');
+      } finally {
+        setIsLoading(false);
+      }
     };
 
     loadData();
@@ -183,6 +228,16 @@ export const useAgentTemplates = () => {
     createTemplate,
     updateTemplate,
     deleteTemplate,
-    refetch: () => Promise.all([fetchTemplates(), fetchCategories()]),
+    refetch: async () => {
+      setIsLoading(true);
+      setError(null);
+      try {
+        await Promise.all([fetchTemplates(), fetchCategories()]);
+      } catch (error: any) {
+        setError(error.message || 'Failed to refetch data');
+      } finally {
+        setIsLoading(false);
+      }
+    },
   };
 };
