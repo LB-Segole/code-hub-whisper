@@ -1,4 +1,3 @@
-
 import React, { useState, useRef, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -49,7 +48,7 @@ export const BrowserChatTest: React.FC<BrowserChatTestProps> = ({
     setMessages(prev => [...prev, newUserMessage]);
 
     try {
-      const response = await aiChatService.sendMessage(agent.id, userMessage, sessionId);
+      const response = await aiChatService.sendMessage(userMessage, sessionId);
 
       if (response.success && response.response) {
         const assistantMessage: ChatMessage = {

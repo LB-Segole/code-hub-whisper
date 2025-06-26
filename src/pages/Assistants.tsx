@@ -6,8 +6,7 @@ import { useNavigate } from 'react-router-dom';
 import AssistantForm from '@/components/Assistants/AssistantForm';
 import AssistantCard from '@/components/Assistants/AssistantCard';
 import CallInterface from '@/components/Assistants/CallInterface';
-import { useAssistants } from '@/hooks/useAssistants';
-import { Assistant, AssistantFormData } from '@/hooks/useAssistants';
+import { useAssistants, Assistant, AssistantFormData } from '@/hooks/useAssistants';
 import { toast } from 'sonner';
 
 const Assistants = () => {
@@ -60,11 +59,11 @@ const Assistants = () => {
       name: assistant.name,
       system_prompt: assistant.system_prompt,
       first_message: assistant.first_message || '',
-      voice_provider: assistant.voice_provider,
-      voice_id: assistant.voice_id,
-      model: assistant.model,
-      temperature: assistant.temperature,
-      max_tokens: assistant.max_tokens,
+      voice_provider: assistant.voice_provider || 'deepgram',
+      voice_id: assistant.voice_id || 'aura-asteria-en',
+      model: assistant.model || 'nova-2',
+      temperature: assistant.temperature || 0.8,
+      max_tokens: assistant.max_tokens || 500,
     });
     setShowForm(true);
   };
@@ -173,7 +172,7 @@ const Assistants = () => {
           <div className="text-center py-12">
             <p className="text-gray-500 text-lg mb-4">No assistants created yet</p>
             <Button onClick={() => setShowForm(true)}>
-              <Plus className="w-4 h-4 mr-2" />
+              <Plus className="w-4 w-4 mr-2" />
               Create Your First Assistant
             </Button>
           </div>
