@@ -8,6 +8,7 @@ import CallInterface from '@/components/Assistants/CallInterface';
 import { Assistant, AssistantFormData } from '@/types/assistant';
 import { FloatingVoiceAssistant } from '@/components/Assistants/FloatingVoiceAssistant';
 import { OutboundCallInterface } from '@/components/Assistants/OutboundCallInterface';
+import { toast } from 'react-toastify';
 
 const Assistants = () => {
   const { assistants, isLoading, createAssistant, updateAssistant, deleteAssistant } = useAssistants();
@@ -96,9 +97,13 @@ const Assistants = () => {
   };
 
   const handleDelete = async (assistantId: string) => {
-    const success = await deleteAssistant(assistantId);
-    if (success) {
-      console.log('Assistant deleted successfully');
+    if (window.confirm('Are you sure you want to delete this assistant?')) {
+      const success = await deleteAssistant(assistantId);
+      if (success) {
+        toast.success('Assistant deleted successfully');
+      } else {
+        toast.error('Failed to delete assistant');
+      }
     }
   };
 

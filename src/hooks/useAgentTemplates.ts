@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 
 export interface AgentTemplate {
@@ -29,72 +28,49 @@ export const useAgentTemplates = () => {
   const [templates, setTemplates] = useState<AgentTemplate[]>([]);
   const [categories, setCategories] = useState<string[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
-  useEffect(() => {
-    loadTemplates();
-  }, []);
-
-  const loadTemplates = async () => {
+  const refetch = async () => {
     try {
       setIsLoading(true);
+      setError(null);
       
-      // Create some mock templates for local development
+      // Simulate loading templates for local mode
       const mockTemplates: AgentTemplate[] = [
         {
           id: '1',
           name: 'Customer Support Agent',
-          description: 'Friendly customer support assistant for handling inquiries',
-          category: 'support',
-          template_data: {
-            system_prompt: 'You are a helpful customer support agent. Be friendly and professional.',
-            voice_model: 'aura-asteria-en'
-          },
-          created_by: 'system',
+          description: 'Helpful customer service assistant',
+          category: 'Support',
+          system_prompt: 'You are a helpful customer support agent.',
           is_public: true,
-          downloads_count: 150,
-          rating_average: 4.5,
-          rating_count: 30,
+          created_by: 'system',
           created_at: new Date().toISOString(),
           updated_at: new Date().toISOString(),
-          version: '1.0.0',
-          tags: ['support', 'customer-service'],
-          usage_count: 150
-        },
-        {
-          id: '2',
-          name: 'Sales Assistant',
-          description: 'Professional sales agent for lead qualification',
-          category: 'sales',
-          template_data: {
-            system_prompt: 'You are a sales assistant. Help qualify leads and provide product information.',
-            voice_model: 'aura-asteria-en'
-          },
-          created_by: 'system',
-          is_public: true,
-          downloads_count: 89,
-          rating_average: 4.2,
-          rating_count: 18,
-          created_at: new Date().toISOString(),
-          updated_at: new Date().toISOString(),
-          version: '1.0.0',
-          tags: ['sales', 'lead-qualification'],
-          usage_count: 89
+          rating: 4.5,
+          usage_count: 150,
+          tags: ['support', 'customer-service']
         }
       ];
-
+      
       setTemplates(mockTemplates);
-      setCategories(['support', 'sales', 'general']);
-    } catch (error) {
-      console.error('Error loading templates:', error);
+      setCategories(['Support', 'Sales', 'Marketing']);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to load templates');
     } finally {
       setIsLoading(false);
     }
   };
 
+  useEffect(() => {
+    refetch();
+  }, []);
+
   return {
     templates,
     categories,
     isLoading,
-    refetch: loadTemplates
+    error,
+    refetch
   };
 };

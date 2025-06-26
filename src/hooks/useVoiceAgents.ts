@@ -92,7 +92,7 @@ export const useVoiceAgents = () => {
 
       await backendService.update('voice_agents', id, updateData);
       
-      // Reload the agents to get the updated data
+      // Reload to get updated data
       await loadAgents();
       
       return agents.find(agent => agent.id === id) || null;

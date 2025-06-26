@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { backendService } from '@/services/BackendService';
 
@@ -38,20 +37,19 @@ export const useCampaigns = () => {
     }
   };
 
-  const createCampaign = {
-    mutateAsync: async (campaignData: Partial<Campaign>) => {
-      try {
-        const newCampaign = await backendService.insert('campaigns', {
-          ...campaignData,
-          created_at: new Date().toISOString(),
-          updated_at: new Date().toISOString()
-        });
-        setCampaigns(prev => [newCampaign, ...prev]);
-        return newCampaign;
-      } catch (error) {
-        console.error('Error creating campaign:', error);
-        throw error;
-      }
+  const createCampaign = async (campaignData: Partial<Campaign>): Promise<Campaign | null> => {
+    try {
+      const newCampaign = await backendService.insert('campaigns', {
+        ...campaignData,
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString()
+      }) as Campaign;
+      
+      setCampaigns(prev => [newCampaign, ...prev]);
+      return newCampaign;
+    } catch (error) {
+      console.error('Error creating campaign:', error);
+      throw error;
     }
   };
 

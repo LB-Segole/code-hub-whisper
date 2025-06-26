@@ -1,17 +1,24 @@
 
 export interface VoiceAgent {
   id: string;
-  user_id: string;
   name: string;
   description?: string;
   system_prompt: string;
   voice_model: string;
-  voice_settings: Record<string, any>;
+  voice_settings: any;
   tools: any[];
-  settings: Record<string, any>;
-  is_active: boolean;
+  settings: any;
+  is_active?: boolean;
   created_at: string;
   updated_at: string;
+  user_id: string;
+  // Legacy fields for compatibility
+  first_message?: string;
+  voice_provider?: string;
+  voice_id?: string;
+  model?: string;
+  temperature?: number;
+  max_tokens?: number;
 }
 
 export interface VoiceAgentFormData {
@@ -19,15 +26,14 @@ export interface VoiceAgentFormData {
   description?: string;
   system_prompt: string;
   voice_model: string;
-  voice_settings: Record<string, any>;
-  tools: any[];
-  settings: Record<string, any>;
-}
-
-export interface VoiceTestResult {
-  success: boolean;
-  message: string;
-  transcript?: string;
-  response?: string;
-  error?: string;
+  voice_settings?: any;
+  tools?: any[];
+  settings?: any;
+  // Legacy fields
+  first_message?: string;
+  voice_provider: string;
+  voice_id: string;
+  model: string;
+  temperature: number;
+  max_tokens: number;
 }

@@ -1,136 +1,107 @@
-import React, { createContext, useContext, useEffect, useState, ReactNode } from 'react';
-import { backendService, AuthUser } from '@/services/BackendService';
+import React, { createContext, useState, useEffect, useContext } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { backendService } from '@/services/BackendService';
 
-interface AuthContextType {
-  user: AuthUser | null;
-  isAuthenticated: boolean;
-  login: (credentials: { email: string; password: string }) => Promise<void>;
-  register: (userData: { name: string; email: string; password: string }) => Promise<void>;
-  logout: () => Promise<void>;
+interface AuthContextProps {
+  user: any | null;
+  isLoading: boolean;
+  login: (credentials: any) => Promise<void>;
+  logout: () => void;
+  register: (userData: any) => Promise<void>;
   resetPassword: (email: string) => Promise<void>;
   updatePassword: (newPassword: string) => Promise<void>;
-  isLoading: boolean;
 }
 
-const AuthContext = createContext<AuthContextType | undefined>(undefined);
+const AuthContext = createContext<AuthContextProps | undefined>(undefined);
 
 export const useAuth = () => {
   const context = useContext(AuthContext);
-  if (context === undefined) {
+  if (!context) {
     throw new Error('useAuth must be used within an AuthProvider');
   }
   return context;
 };
 
-interface AuthProviderProps {
-  children: ReactNode;
-}
-
-export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
-  const [user, setUser] = useState<AuthUser | null>(null);
+export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+  const [user, setUser] = useState<any | null>(null);
   const [isLoading, setIsLoading] = useState(true);
-
-  const isAuthenticated = !!user;
+  const navigate = useNavigate();
 
   useEffect(() => {
-    // Check for existing session
-    const initializeAuth = async () => {
+    const loadUser = async () => {
       try {
         const currentUser = await backendService.getCurrentUser();
         setUser(currentUser);
       } catch (error) {
-        console.error('Auth initialization error:', error);
+        setUser(null);
       } finally {
         setIsLoading(false);
       }
     };
 
-    initializeAuth();
-
-    // Set up auth state listener
-    const unsubscribe = backendService.onAuthStateChange((currentUser: AuthUser | null) => {
-      setUser(currentUser);
-      setIsLoading(false);
-    });
-
-    return () => {
-      unsubscribe();
-    };
+    loadUser();
   }, []);
 
-  const login = async (credentials: { email: string; password: string }) => {
+  const login = async (credentials: any): Promise<void> => {
+    setIsLoading(true);
     try {
-      setIsLoading(true);
-      const user = await backendService.signIn(credentials.email, credentials.password);
-      setUser(user);
+      const session = await backendService.signIn(credentials);
+      setUser(session?.user || null);
+      navigate('/dashboard');
     } catch (error) {
-      console.error('Login error:', error);
+      console.error('Login failed:', error);
       throw error;
     } finally {
       setIsLoading(false);
     }
   };
 
-  const register = async (userData: { name: string; email: string; password: string }) => {
+  const register = async (userData: any): Promise<void> => {
+    setIsLoading(true);
     try {
-      setIsLoading(true);
-      const user = await backendService.signUp(userData.email, userData.password, {
-        name: userData.name
-      });
-      setUser(user);
+      const session = await backendService.signUp(userData);
+      setUser(session?.user || null);
+      navigate('/dashboard');
     } catch (error) {
-      console.error('Registration error:', error);
+      console.error('Registration failed:', error);
       throw error;
     } finally {
       setIsLoading(false);
     }
   };
 
-  const logout = async () => {
-    try {
-      setIsLoading(true);
-      await backendService.signOut();
-      setUser(null);
-    } catch (error) {
-      console.error('Logout error:', error);
-      throw error;
-    } finally {
-      setIsLoading(false);
-    }
+  const logout = () => {
+    backendService.signOut();
+    setUser(null);
+    navigate('/login');
   };
 
-  const resetPassword = async (email: string) => {
-    try {
-      console.log('Password reset requested for:', email);
-      // In local mode, just log the request
-      alert('Password reset functionality would be available with the local backend.');
-    } catch (error) {
-      console.error('Reset password error:', error);
-      throw error;
-    }
+  const resetPassword = async (email: string): Promise<void> => {
+    console.log('Reset password requested for:', email);
+    // Simulate password reset in local mode
+    await new Promise(resolve => setTimeout(resolve, 1000));
   };
 
-  const updatePassword = async (newPassword: string) => {
-    try {
-      console.log('Password update requested');
-      // In local mode, just log the request
-      alert('Password update functionality would be available with the local backend.');
-    } catch (error) {
-      console.error('Update password error:', error);
-      throw error;
-    }
+  const updatePassword = async (newPassword: string): Promise<void> => {
+    console.log('Password update requested');
+    // Simulate password update in local mode
+    setUser(prev => prev ? { ...prev, updated_at: new Date().toISOString() } : null);
+    await new Promise(resolve => setTimeout(resolve, 1000));
   };
 
-  const value = {
+  const value: AuthContextProps = {
     user,
-    isAuthenticated,
-    login,
-    register,
-    logout,
-    resetPassword,
-    updatePassword,
     isLoading,
+    login,
+    logout,
+    register,
+    resetPassword,
+    updatePassword
   };
 
-  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
+  return (
+    <AuthContext.Provider value={value}>
+      {!isLoading && children}
+    </AuthContext.Provider>
+  );
 };
