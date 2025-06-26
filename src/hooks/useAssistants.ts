@@ -1,9 +1,9 @@
 
 import { useState, useEffect } from 'react';
 import { backendService } from '@/services/BackendService';
-import { Assistant, AssistantFormData } from '@/types/assistant';
+import type { Assistant, AssistantFormData } from '@/types/assistant';
 
-export { Assistant, AssistantFormData };
+export type { Assistant, AssistantFormData };
 
 export const useAssistants = () => {
   const [assistants, setAssistants] = useState<Assistant[]>([]);
