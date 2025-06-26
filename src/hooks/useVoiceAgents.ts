@@ -1,7 +1,33 @@
 
 import { useState, useEffect } from 'react';
-import { supabase } from '@/lib/supabase';
-import { VoiceAgent, VoiceAgentFormData } from '@/types/voiceAgent';
+import { backendService } from '@/services/BackendService';
+
+export interface VoiceAgent {
+  id: string;
+  name: string;
+  system_prompt: string;
+  first_message?: string;
+  voice_provider: string;
+  voice_id: string;
+  model: string;
+  temperature: number;
+  max_tokens: number;
+  created_at: string;
+  updated_at: string;
+  user_id: string;
+  is_active?: boolean;
+}
+
+export interface VoiceAgentFormData {
+  name: string;
+  system_prompt: string;
+  first_message?: string;
+  voice_provider: string;
+  voice_id: string;
+  model: string;
+  temperature: number;
+  max_tokens: number;
+}
 
 export const useVoiceAgents = () => {
   const [agents, setAgents] = useState<VoiceAgent[]>([]);
@@ -13,12 +39,15 @@ export const useVoiceAgents = () => {
       setIsLoading(true);
       setError(null);
       
-      const { data, error } = await supabase
-        .from('voice_agents')
-        .select('*')
-        .order('created_at', { ascending: false });
+      const user = await backendService.getCurrentUser();
+      if (!user) {
+        throw new Error('User not authenticated');
+      }
 
-      if (error) throw error;
+      const data = await backendService.select<VoiceAgent>('voice_agents', {
+        where: { user_id: user.id },
+        orderBy: { column: 'created_at', ascending: false }
+      });
       
       setAgents(data || []);
     } catch (err) {
@@ -31,24 +60,21 @@ export const useVoiceAgents = () => {
 
   const createAgent = async (formData: VoiceAgentFormData): Promise<VoiceAgent | null> => {
     try {
-      const { data, error } = await supabase
-        .from('voice_agents')
-        .insert({
-          name: formData.name,
-          description: formData.description,
-          system_prompt: formData.system_prompt,
-          voice_model: formData.voice_model,
-          voice_settings: formData.voice_settings,
-          tools: formData.tools,
-          settings: formData.settings,
-        })
-        .select()
-        .single();
+      const user = await backendService.getCurrentUser();
+      if (!user) {
+        throw new Error('User not authenticated');
+      }
 
-      if (error) throw error;
+      const newAgent = await backendService.insert<VoiceAgent>('voice_agents', {
+        ...formData,
+        user_id: user.id,
+        is_active: true,
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString()
+      });
       
-      setAgents(prev => [data, ...prev]);
-      return data;
+      setAgents(prev => [newAgent, ...prev]);
+      return newAgent;
     } catch (err) {
       console.error('Error creating voice agent:', err);
       setError(err instanceof Error ? err.message : 'Failed to create agent');
@@ -58,26 +84,13 @@ export const useVoiceAgents = () => {
 
   const updateAgent = async (id: string, formData: VoiceAgentFormData): Promise<VoiceAgent | null> => {
     try {
-      const { data, error } = await supabase
-        .from('voice_agents')
-        .update({
-          name: formData.name,
-          description: formData.description,
-          system_prompt: formData.system_prompt,
-          voice_model: formData.voice_model,
-          voice_settings: formData.voice_settings,
-          tools: formData.tools,
-          settings: formData.settings,
-          updated_at: new Date().toISOString(),
-        })
-        .eq('id', id)
-        .select()
-        .single();
-
-      if (error) throw error;
+      const updatedAgent = await backendService.update<VoiceAgent>('voice_agents', id, {
+        ...formData,
+        updated_at: new Date().toISOString()
+      });
       
-      setAgents(prev => prev.map(agent => agent.id === id ? data : agent));
-      return data;
+      setAgents(prev => prev.map(agent => agent.id === id ? updatedAgent : agent));
+      return updatedAgent;
     } catch (err) {
       console.error('Error updating voice agent:', err);
       setError(err instanceof Error ? err.message : 'Failed to update agent');
@@ -87,12 +100,7 @@ export const useVoiceAgents = () => {
 
   const deleteAgent = async (id: string): Promise<boolean> => {
     try {
-      const { error } = await supabase
-        .from('voice_agents')
-        .delete()
-        .eq('id', id);
-
-      if (error) throw error;
+      await backendService.delete('voice_agents', id);
       
       setAgents(prev => prev.filter(agent => agent.id !== id));
       return true;
@@ -105,12 +113,10 @@ export const useVoiceAgents = () => {
 
   const toggleAgentStatus = async (id: string, isActive: boolean): Promise<boolean> => {
     try {
-      const { error } = await supabase
-        .from('voice_agents')
-        .update({ is_active: isActive, updated_at: new Date().toISOString() })
-        .eq('id', id);
-
-      if (error) throw error;
+      const updatedAgent = await backendService.update<VoiceAgent>('voice_agents', id, {
+        is_active: isActive,
+        updated_at: new Date().toISOString()
+      });
       
       setAgents(prev => prev.map(agent => 
         agent.id === id ? { ...agent, is_active: isActive } : agent

@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { VoiceAgent } from '@/types/voiceAgent';
-import { supabase } from '@/lib/supabase';
+import { backendService } from '@/services/BackendService';
 import { Phone, PhoneCall, Loader2 } from 'lucide-react';
 
 interface OutboundCallInterfaceProps {
@@ -20,7 +20,7 @@ export const OutboundCallInterface: React.FC<OutboundCallInterfaceProps> = ({
   const [phoneNumber, setPhoneNumber] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [callStatus, setCallStatus] = useState<string>('');
-  const [callSid, setCallSid] = useState<string>('');
+  const [callId, setCallId] = useState<string>('');
 
   const handleMakeCall = async () => {
     if (!phoneNumber.trim()) {
@@ -32,132 +32,120 @@ export const OutboundCallInterface: React.FC<OutboundCallInterfaceProps> = ({
     setCallStatus('Initiating call...');
 
     try {
-      const { data: { user } } = await supabase.auth.getUser();
+      const user = await backendService.getCurrentUser();
       
-      const { data, error } = await supabase.functions.invoke('make-outbound-call', {
-        body: {
-          agentId: agent.id,
-          phoneNumber: phoneNumber.trim(),
-          userId: user?.id,
-        },
+      if (!user) {
+        throw new Error('User not authenticated');
+      }
+
+      // Create call record in local database
+      const newCall = await backendService.insert('calls', {
+        phone_number: phoneNumber,
+        status: 'pending',
+        user_id: user.id,
+        agent_id: agent.id,
+        created_at: new Date().toISOString()
       });
 
-      if (error) {
-        throw error;
-      }
-
-      if (data.success) {
-        setCallSid(data.call_sid);
-        setCallStatus(`Call initiated successfully! Calling ${phoneNumber}...`);
-        
-        // Simulate call progress updates
-        setTimeout(() => setCallStatus('Ringing...'), 2000);
-        setTimeout(() => setCallStatus('Connected! Agent is now speaking.'), 5000);
-      } else {
-        throw new Error(data.error || 'Failed to initiate call');
-      }
+      setCallId(newCall.id);
+      setCallStatus(`Call initiated with ${agent.name}`);
+      
+      // Simulate call progression for demo
+      setTimeout(() => {
+        setCallStatus('Call in progress...');
+      }, 2000);
 
     } catch (error) {
-      console.error('Call error:', error);
-      const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
-      setCallStatus(`Error: ${errorMessage}`);
+      console.error('Error making call:', error);
+      setCallStatus('Failed to initiate call');
     } finally {
       setIsLoading(false);
     }
   };
 
-  const formatPhoneNumber = (value: string) => {
-    // Remove all non-digit characters
-    const digits = value.replace(/\D/g, '');
-    
-    // Format as +1 (XXX) XXX-XXXX
-    if (digits.length >= 10) {
-      const country = digits.length === 11 && digits[0] === '1' ? digits[0] : '1';
-      const area = digits.slice(-10, -7);
-      const first = digits.slice(-7, -4);
-      const last = digits.slice(-4);
-      
-      return `+${country} (${area}) ${first}-${last}`;
-    }
-    
-    return value;
-  };
+  const handleEndCall = async () => {
+    if (!callId) return;
 
-  const handlePhoneNumberChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const formatted = formatPhoneNumber(e.target.value);
-    setPhoneNumber(formatted);
+    try {
+      await backendService.update('calls', callId, {
+        status: 'completed',
+        completed_at: new Date().toISOString()
+      });
+      
+      setCallStatus('Call ended');
+      setTimeout(() => {
+        onClose();
+      }, 1000);
+    } catch (error) {
+      console.error('Error ending call:', error);
+    }
   };
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-      <Card className="w-full max-w-md">
-        <CardHeader>
-          <div className="flex justify-between items-center">
-            <CardTitle className="flex items-center gap-2">
-              <PhoneCall className="h-5 w-5" />
-              Make Outbound Call
-            </CardTitle>
-            <Button variant="outline" size="sm" onClick={onClose}>
-              Close
-            </Button>
-          </div>
-        </CardHeader>
-        
-        <CardContent className="space-y-4">
-          <div className="space-y-2">
-            <h3 className="font-semibold">Agent: {agent.name}</h3>
-            <p className="text-sm text-gray-600">{agent.description}</p>
-            <p className="text-sm text-gray-500">Voice: {agent.voice_model}</p>
-          </div>
+    <Card className="w-full max-w-md mx-auto">
+      <CardHeader>
+        <CardTitle className="flex items-center gap-2">
+          <Phone className="h-5 w-5" />
+          Outbound Call - {agent.name}
+        </CardTitle>
+      </CardHeader>
+      <CardContent className="space-y-4">
+        <div className="grid w-full max-w-sm items-center gap-1.5">
+          <Label htmlFor="phone">Phone Number</Label>
+          <Input
+            id="phone"
+            type="tel"
+            placeholder="+1234567890"
+            value={phoneNumber}
+            onChange={(e) => setPhoneNumber(e.target.value)}
+            disabled={isLoading}
+          />
+        </div>
 
-          <div className="space-y-2">
-            <Label htmlFor="phone">Phone Number</Label>
-            <Input
-              id="phone"
-              type="tel"
-              value={phoneNumber}
-              onChange={handlePhoneNumberChange}
-              placeholder="+1 (555) 123-4567"
-              disabled={isLoading}
-            />
+        {callStatus && (
+          <div className="p-3 bg-gray-50 rounded-md">
+            <p className="text-sm text-gray-600">{callStatus}</p>
           </div>
+        )}
 
-          {callStatus && (
-            <div className="p-3 bg-blue-50 border border-blue-200 rounded-lg">
-              <p className="text-sm text-blue-800">{callStatus}</p>
-              {callSid && (
-                <p className="text-xs text-blue-600 mt-1">Call ID: {callSid}</p>
-              )}
-            </div>
-          )}
-
-          <div className="flex gap-2">
-            <Button
-              onClick={handleMakeCall}
-              disabled={isLoading || !phoneNumber.trim()}
+        <div className="flex gap-2">
+          <Button 
+            onClick={handleMakeCall}
+            disabled={isLoading || !phoneNumber.trim()}
+            className="flex-1"
+          >
+            {isLoading ? (
+              <>
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                Calling...
+              </>
+            ) : (
+              <>
+                <PhoneCall className="mr-2 h-4 w-4" />
+                Make Call
+              </>
+            )}
+          </Button>
+          
+          {callId && (
+            <Button 
+              onClick={handleEndCall}
+              variant="outline"
               className="flex-1"
             >
-              {isLoading ? (
-                <>
-                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                  Calling...
-                </>
-              ) : (
-                <>
-                  <Phone className="h-4 w-4 mr-2" />
-                  Make Call
-                </>
-              )}
+              End Call
             </Button>
-          </div>
+          )}
+        </div>
 
-          <div className="text-xs text-gray-500 space-y-1">
-            <p>• Ensure the number includes country code</p>
-            <p>• The AI agent will automatically greet the recipient</p>
-            <p>• Call logs will be saved to your dashboard</p>
-          </div>
-        </CardContent>
-      </Card>
-    </div>
+        <Button 
+          onClick={onClose}
+          variant="ghost"
+          className="w-full"
+        >
+          Close
+        </Button>
+      </CardContent>
+    </Card>
   );
 };

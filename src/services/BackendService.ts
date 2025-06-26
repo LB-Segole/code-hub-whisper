@@ -1,19 +1,9 @@
 
 /**
- * Main Backend Service - Migration Interface
+ * Main Backend Service - Local Implementation
  * 
  * This is the single point of contact for all backend operations.
- * It uses adapter pattern to abstract different backend implementations.
- * 
- * MIGRATION GUIDE:
- * ================
- * 
- * Current State: Uses LocalAdapter for local development
- * Future State: Can switch to Railway or Supabase as needed
- * 
- * To migrate backends:
- * 1. Update environment variables
- * 2. No changes needed in React components!
+ * Now using LocalAdapter exclusively after removing Supabase dependency.
  */
 
 import { 
@@ -28,8 +18,7 @@ export class BackendService {
   private adapter: BackendAdapter;
 
   constructor() {
-    // For now, we'll use LocalAdapter as the default
-    // In the future, this can be switched based on environment variables
+    // Using LocalAdapter exclusively - no more Supabase
     this.adapter = new LocalAdapter();
   }
 

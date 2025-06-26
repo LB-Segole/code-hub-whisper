@@ -1,5 +1,5 @@
 
-import { supabase } from '@/integrations/supabase/client';
+import { backendService } from './BackendService';
 
 export interface CallRecord {
   id: string;
@@ -28,16 +28,13 @@ export interface CallStats {
 class CallService {
   async getAllCalls(): Promise<CallRecord[]> {
     try {
-      const { data, error } = await supabase
-        .from('call_analytics_view')
-        .select('*')
-        .order('created_at', { ascending: false });
+      const calls = await backendService.select('calls', {
+        orderBy: { column: 'created_at', ascending: false }
+      });
 
-      if (error) throw error;
-
-      return (data || []).map(call => ({
+      return calls.map(call => ({
         id: call.id || '',
-        phone_number: call.contact_phone || 'Unknown',
+        phone_number: call.phone_number || 'Unknown',
         status: call.status || 'unknown',
         duration: call.duration || 0,
         created_at: call.created_at || '',
@@ -47,7 +44,7 @@ class CallService {
         contact_phone: call.contact_phone || undefined,
         contact_company: call.contact_company || undefined,
         campaign_name: call.campaign_name || undefined,
-        recording_url: undefined
+        recording_url: call.recording_url || undefined
       }));
     } catch (error) {
       console.error('Error fetching calls:', error);
@@ -62,28 +59,27 @@ class CallService {
         return null;
       }
 
-      const { data, error } = await supabase
-        .from('call_analytics_view')
-        .select('*')
-        .eq('id', callId)
-        .single();
+      const calls = await backendService.select('calls', {
+        where: { id: callId },
+        limit: 1
+      });
 
-      if (error) throw error;
-      if (!data) return null;
+      if (calls.length === 0) return null;
 
+      const call = calls[0];
       return {
-        id: data.id || '',
-        phone_number: data.contact_phone || 'Unknown',
-        status: data.status || 'unknown',
-        duration: data.duration || 0,
-        created_at: data.created_at || '',
-        summary: data.summary || undefined,
-        external_id: data.external_id || undefined,
-        contact_name: data.contact_name || undefined,
-        contact_phone: data.contact_phone || undefined,
-        contact_company: data.contact_company || undefined,
-        campaign_name: data.campaign_name || undefined,
-        recording_url: undefined
+        id: call.id || '',
+        phone_number: call.phone_number || 'Unknown',
+        status: call.status || 'unknown',
+        duration: call.duration || 0,
+        created_at: call.created_at || '',
+        summary: call.summary || undefined,
+        external_id: call.external_id || undefined,
+        contact_name: call.contact_name || undefined,
+        contact_phone: call.contact_phone || undefined,
+        contact_company: call.contact_company || undefined,
+        campaign_name: call.campaign_name || undefined,
+        recording_url: call.recording_url || undefined
       };
     } catch (error) {
       console.error('Error fetching call:', error);
@@ -97,18 +93,16 @@ class CallService {
         throw new Error('Phone number is required');
       }
 
-      const { data, error } = await supabase.functions.invoke('make-outbound-call', {
-        body: { 
-          phoneNumber,
-          campaignId: campaignId || undefined
-        }
+      const newCall = await backendService.insert('calls', {
+        phone_number: phoneNumber,
+        campaign_id: campaignId || null,
+        status: 'pending',
+        created_at: new Date().toISOString()
       });
-
-      if (error) throw error;
       
       return { 
         success: true, 
-        callId: data.callId
+        callId: newCall.id
       };
     } catch (error) {
       console.error('Error initiating call:', error);
@@ -121,11 +115,11 @@ class CallService {
 
   async endCall(callId: string, summary?: string): Promise<{ success: boolean; error?: string }> {
     try {
-      const { error } = await supabase.functions.invoke('end-call', {
-        body: { callId, summary }
+      await backendService.update('calls', callId, {
+        status: 'completed',
+        summary: summary || null,
+        completed_at: new Date().toISOString()
       });
-
-      if (error) throw error;
       
       return { success: true };
     } catch (error) {
@@ -139,14 +133,8 @@ class CallService {
 
   async getCallStats(): Promise<CallStats> {
     try {
-      const { data, error } = await supabase
-        .from('calls')
-        .select('status, duration')
-        .order('created_at', { ascending: false });
+      const calls = await backendService.select('calls');
 
-      if (error) throw error;
-
-      const calls = data || [];
       const totalCalls = calls.length;
       const successfulCalls = calls.filter(call => call.status === 'completed').length;
       const failedCalls = calls.filter(call => call.status === 'failed').length;
