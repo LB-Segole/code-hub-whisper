@@ -1,4 +1,3 @@
-
 /**
  * Supabase Implementation of Backend Adapters
  * This file contains all Supabase-specific logic
@@ -12,7 +11,13 @@ export class SupabaseAuthAdapter implements AuthAdapter {
   async signUp(email: string, password: string, metadata?: any): Promise<AuthUser> {
     console.log('🔐 SupabaseAuthAdapter: Signing up user', { email });
     
-    const { data, error } = await supabase.auth.signUp({ email, password });
+    const { data, error } = await supabase.auth.signUp({ 
+      email, 
+      password,
+      options: {
+        data: metadata || {}
+      }
+    });
     if (error) throw new Error(`Sign up failed: ${error.message}`);
     if (!data.user) throw new Error('User creation failed');
     
