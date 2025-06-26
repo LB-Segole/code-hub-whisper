@@ -1,14 +1,13 @@
 
-import React, { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Plus, ArrowLeft } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
-import { AssistantForm } from '@/components/Assistants/AssistantForm';
-import { AssistantCard } from '@/components/Assistants/AssistantCard';
-import { CallInterface } from '@/components/Assistants/CallInterface';
+import AssistantForm from '@/components/Assistants/AssistantForm';
+import AssistantCard from '@/components/Assistants/AssistantCard';
+import CallInterface from '@/components/Assistants/CallInterface';
 import { useAssistants } from '@/hooks/useAssistants';
-import { Assistant } from '@/types/assistant';
+import { Assistant, AssistantFormData } from '@/types/assistant';
 import { toast } from 'sonner';
 
 const Assistants = () => {
@@ -18,7 +17,7 @@ const Assistants = () => {
   const [editingAssistant, setEditingAssistant] = useState<Assistant | undefined>(undefined);
   const [callingAssistant, setCallingAssistant] = useState<Assistant | null>(null);
 
-  const handleCreateAssistant = async (assistantData: Partial<Assistant>) => {
+  const handleCreateAssistant = async (assistantData: AssistantFormData) => {
     try {
       const newAssistant = await createAssistant(assistantData);
       if (newAssistant) {
@@ -30,7 +29,7 @@ const Assistants = () => {
     }
   };
 
-  const handleUpdateAssistant = async (assistantData: Partial<Assistant>) => {
+  const handleUpdateAssistant = async (assistantData: AssistantFormData) => {
     if (!editingAssistant) return;
     
     try {

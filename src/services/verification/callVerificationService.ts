@@ -1,23 +1,5 @@
 
-// Recreate the missing call verification service for local mode
-
-interface VerificationCheck {
-  id: string;
-  type: 'signalwire_api' | 'call_status' | 'webhook_response' | 'ring_timeout' | 'call_connection' | 'audio_stream' | 'ai_response';
-  status: 'pending' | 'passed' | 'failed';
-  details: string;
-  timestamp: string;
-}
-
-interface VerificationSession {
-  sessionId: string;
-  callId: string;
-  phoneNumber: string;
-  startTime: string;
-  lastUpdate: string;
-  overallStatus: 'checking' | 'verified' | 'failed';
-  checks: VerificationCheck[];
-}
+import { VerificationCheck, VerificationSession } from './types';
 
 class CallVerificationService {
   private sessions: Map<string, VerificationSession> = new Map();
@@ -30,6 +12,7 @@ class CallVerificationService {
       phoneNumber,
       startTime: new Date().toISOString(),
       lastUpdate: new Date().toISOString(),
+      status: 'running',
       overallStatus: 'checking',
       checks: []
     };
@@ -66,6 +49,7 @@ class CallVerificationService {
     }
 
     session.overallStatus = session.checks.every(c => c.status === 'passed') ? 'verified' : 'failed';
+    session.status = 'completed';
   }
 
   private delay(ms: number): Promise<void> {

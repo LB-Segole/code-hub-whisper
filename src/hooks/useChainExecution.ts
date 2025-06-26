@@ -1,37 +1,19 @@
 
 import { useState, useEffect } from 'react';
-import { chainExecutionService, ChainExecution } from '@/services/chainExecution.service';
-import { useToast } from '@/hooks/use-toast';
+import { ChainExecutionService, ChainExecution } from '@/services/chainExecution.service';
 
-export const useChainExecution = (chainId?: string) => {
+export const useChainExecution = () => {
   const [executions, setExecutions] = useState<ChainExecution[]>([]);
   const [isLoading, setIsLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const { toast } = useToast();
 
-  const startExecution = async (chainId: string, callId?: string): Promise<ChainExecution | null> => {
+  const startExecution = async (chainId: string): Promise<ChainExecution | null> => {
     try {
       setIsLoading(true);
-      setError(null);
-      
-      const execution = await chainExecutionService.startChainExecution(chainId, callId);
-      
-      toast({
-        title: "Chain Started",
-        description: "Agent chain execution has been started successfully.",
-      });
-      
+      const execution = await ChainExecutionService.startChainExecution(chainId);
+      setExecutions(prev => [execution, ...prev]);
       return execution;
-    } catch (err) {
-      const errorMessage = err instanceof Error ? err.message : 'Failed to start chain execution';
-      setError(errorMessage);
-      
-      toast({
-        title: "Execution Failed",
-        description: errorMessage,
-        variant: "destructive"
-      });
-      
+    } catch (error) {
+      console.error('Error starting chain execution:', error);
       return null;
     } finally {
       setIsLoading(false);
@@ -40,41 +22,27 @@ export const useChainExecution = (chainId?: string) => {
 
   const getExecution = async (executionId: string): Promise<ChainExecution | null> => {
     try {
-      setIsLoading(true);
-      const execution = await chainExecutionService.getChainExecution(executionId);
-      return execution;
-    } catch (err) {
-      const errorMessage = err instanceof Error ? err.message : 'Failed to fetch execution';
-      setError(errorMessage);
+      return await ChainExecutionService.getChainExecution(executionId);
+    } catch (error) {
+      console.error('Error getting chain execution:', error);
       return null;
-    } finally {
-      setIsLoading(false);
     }
   };
 
-  const loadActiveExecutions = async (): Promise<void> => {
+  const getActiveExecutions = async (chainId?: string): Promise<ChainExecution[]> => {
     try {
-      setIsLoading(true);
-      const activeExecutions = await chainExecutionService.getActiveExecutions(chainId);
-      setExecutions(activeExecutions);
-    } catch (err) {
-      const errorMessage = err instanceof Error ? err.message : 'Failed to load active executions';
-      setError(errorMessage);
-    } finally {
-      setIsLoading(false);
+      return await ChainExecutionService.getActiveExecutions(chainId);
+    } catch (error) {
+      console.error('Error getting active executions:', error);
+      return [];
     }
   };
-
-  useEffect(() => {
-    loadActiveExecutions();
-  }, [chainId]);
 
   return {
     executions,
     isLoading,
-    error,
     startExecution,
     getExecution,
-    loadActiveExecutions
+    getActiveExecutions
   };
 };

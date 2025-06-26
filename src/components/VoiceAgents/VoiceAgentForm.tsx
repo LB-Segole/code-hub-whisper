@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -55,6 +54,13 @@ export const VoiceAgentForm: React.FC<VoiceAgentFormProps> = ({
       max_tokens: agent?.settings?.max_tokens || 500,
       interruption_handling: agent?.settings?.interruption_handling || true,
     },
+    // Legacy fields for compatibility
+    first_message: agent?.first_message || '',
+    voice_provider: 'deepgram',
+    voice_id: agent?.voice_id || 'aura-2-asteria-en',
+    model: agent?.model || 'nova-2',
+    temperature: agent?.temperature || 0.8,
+    max_tokens: agent?.max_tokens || 500,
   });
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -87,7 +93,7 @@ export const VoiceAgentForm: React.FC<VoiceAgentFormProps> = ({
               <Label htmlFor="voice_model">Voice Model</Label>
               <Select 
                 value={formData.voice_model} 
-                onValueChange={(value) => setFormData(prev => ({ ...prev, voice_model: value }))}
+                onValueChange={(value) => setFormData(prev => ({ ...prev, voice_model: value, voice_id: value }))}
               >
                 <SelectTrigger>
                   <SelectValue />
@@ -195,7 +201,8 @@ export const VoiceAgentForm: React.FC<VoiceAgentFormProps> = ({
                   onValueChange={([value]) => 
                     setFormData(prev => ({
                       ...prev,
-                      settings: { ...prev.settings, temperature: value }
+                      settings: { ...prev.settings, temperature: value },
+                      temperature: value
                     }))
                   }
                   min={0.0}
@@ -211,12 +218,14 @@ export const VoiceAgentForm: React.FC<VoiceAgentFormProps> = ({
                   id="max_tokens"
                   type="number"
                   value={formData.settings.max_tokens}
-                  onChange={(e) => 
+                  onChange={(e) => {
+                    const value = parseInt(e.target.value) || 500;
                     setFormData(prev => ({
                       ...prev,
-                      settings: { ...prev.settings, max_tokens: parseInt(e.target.value) || 500 }
-                    }))
-                  }
+                      settings: { ...prev.settings, max_tokens: value },
+                      max_tokens: value
+                    }));
+                  }}
                   min={50}
                   max={2000}
                 />

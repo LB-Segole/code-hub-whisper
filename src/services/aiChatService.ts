@@ -14,7 +14,7 @@ export interface ChatResponse {
 class AIChatService {
   private conversationHistory: Map<string, ChatMessage[]> = new Map();
 
-  async sendMessage(agentId: string, message: string, sessionId: string): Promise<ChatResponse> {
+  async sendMessage(message: string, sessionId: string): Promise<ChatResponse> {
     try {
       // Get conversation history
       const history = this.conversationHistory.get(sessionId) || [];
