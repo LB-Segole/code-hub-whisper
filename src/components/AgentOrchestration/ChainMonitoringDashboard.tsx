@@ -58,7 +58,19 @@ export const ChainMonitoringDashboard: React.FC<ChainMonitoringDashboardProps> =
         limit: 50
       });
 
-      setExecutions(data || []);
+      // Type cast the data to ChainExecution[]
+      const typedExecutions = (data || []).map(item => ({
+        id: item.id,
+        chain_id: item.chain_id || '',
+        status: item.status || 'pending',
+        execution_log: item.execution_log || [],
+        started_at: item.started_at || new Date().toISOString(),
+        completed_at: item.completed_at,
+        error_message: item.error_message,
+        chain_name: item.chain_name
+      })) as ChainExecution[];
+
+      setExecutions(typedExecutions);
     } catch (error) {
       console.error('Error loading executions:', error);
     } finally {
@@ -231,7 +243,7 @@ export const ChainMonitoringDashboard: React.FC<ChainMonitoringDashboardProps> =
                 </div>
               ) : (
                 <div className="space-y-4">
-                  {executions.map((execution: any) => (
+                  {executions.map((execution: ChainExecution) => (
                     <div
                       key={execution.id}
                       className="border rounded-lg p-4 hover:bg-gray-50 cursor-pointer"

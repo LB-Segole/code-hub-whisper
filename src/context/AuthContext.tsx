@@ -4,6 +4,7 @@ import { backendService, AuthUser } from '@/services/BackendService';
 
 interface AuthContextType {
   user: AuthUser | null;
+  isAuthenticated: boolean;
   login: (credentials: { email: string; password: string }) => Promise<void>;
   register: (userData: { name: string; email: string; password: string }) => Promise<void>;
   logout: () => Promise<void>;
@@ -27,6 +28,8 @@ interface AuthProviderProps {
 export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const [user, setUser] = useState<AuthUser | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+
+  const isAuthenticated = !!user;
 
   useEffect(() => {
     // Check for existing session
@@ -97,6 +100,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
   const value = {
     user,
+    isAuthenticated,
     login,
     register,
     logout,

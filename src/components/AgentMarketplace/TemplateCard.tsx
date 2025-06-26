@@ -4,7 +4,29 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Star, Download, Calendar } from 'lucide-react';
-import { AgentTemplate } from '@/hooks/useAgentTemplates';
+
+export interface AgentTemplate {
+  id: string;
+  name: string;
+  description: string;
+  category: string;
+  template_data: {
+    system_prompt?: string;
+    voice_model?: string;
+    example_calls?: string[];
+    is_active?: boolean;
+  };
+  created_by: string;
+  team_id?: string;
+  is_public: boolean;
+  downloads_count: number;
+  rating_average: number;
+  rating_count: number;
+  created_at: string;
+  updated_at: string;
+  version?: string;
+  tags: string[];
+}
 
 interface TemplateCardProps {
   template: AgentTemplate;
@@ -64,7 +86,7 @@ export const TemplateCard: React.FC<TemplateCardProps> = ({
         </p>
 
         <div className="flex flex-wrap gap-1">
-          {template.tags.slice(0, 3).map((tag) => (
+          {template.tags.slice(0, 3).map((tag: string) => (
             <Badge key={tag} variant="outline" className="text-xs">
               {tag}
             </Badge>

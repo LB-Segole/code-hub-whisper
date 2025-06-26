@@ -54,11 +54,22 @@ export const AgentOrchestration: React.FC = () => {
         orderBy: { column: 'created_at', ascending: false }
       });
 
-      setChains(data || []);
+      // Type cast the data to AgentChain[]
+      const typedChains = (data || []).map(item => ({
+        id: item.id,
+        name: item.name || 'Unnamed Chain',
+        description: item.description,
+        configuration: item.configuration || { steps: [] },
+        is_active: item.is_active || false,
+        created_at: item.created_at || new Date().toISOString(),
+        updated_at: item.updated_at || new Date().toISOString()
+      })) as AgentChain[];
+
+      setChains(typedChains);
       
       // Calculate stats
-      const totalChains = data?.length || 0;
-      const activeChains = data?.filter(chain => chain.is_active).length || 0;
+      const totalChains = typedChains.length;
+      const activeChains = typedChains.filter(chain => chain.is_active).length;
       
       setStats(prev => ({
         ...prev,
@@ -101,12 +112,23 @@ export const AgentOrchestration: React.FC = () => {
       const user = await backendService.getCurrentUser();
       if (!user) throw new Error('User not authenticated');
 
-      const data = await backendService.insert('agent_chains', {
+      const newChainData = await backendService.insert('agent_chains', {
         ...chainData,
         user_id: user.id
       });
 
-      setChains(prev => [data, ...prev]);
+      // Type cast the new data
+      const newChain: AgentChain = {
+        id: newChainData.id,
+        name: newChainData.name || 'Unnamed Chain',
+        description: newChainData.description,
+        configuration: newChainData.configuration || { steps: [] },
+        is_active: newChainData.is_active || false,
+        created_at: newChainData.created_at || new Date().toISOString(),
+        updated_at: newChainData.updated_at || new Date().toISOString()
+      };
+
+      setChains(prev => [newChain, ...prev]);
       
       toast({
         title: "Success",

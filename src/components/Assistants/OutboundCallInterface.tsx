@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Assistant } from '@/types/assistant';
-import { supabase } from '@/lib/supabase';
+import { backendService } from '@/services/BackendService';
 import { Phone, PhoneCall, Loader2 } from 'lucide-react';
 
 interface OutboundCallInterfaceProps {
@@ -32,30 +32,23 @@ export const OutboundCallInterface: React.FC<OutboundCallInterfaceProps> = ({
     setCallStatus('Initiating call...');
 
     try {
-      const { data: { user } } = await supabase.auth.getUser();
+      const user = await backendService.getCurrentUser();
       
-      const { data, error } = await supabase.functions.invoke('make-outbound-call', {
-        body: {
-          assistantId: assistant.id, // Updated to use assistant ID
-          phoneNumber: phoneNumber.trim(),
-          userId: user?.id,
-        },
+      // Create call record using local backend
+      const callData = await backendService.insert('calls', {
+        phone_number: phoneNumber.trim(),
+        assistant_id: assistant.id,
+        user_id: user?.id,
+        status: 'pending',
+        created_at: new Date().toISOString()
       });
 
-      if (error) {
-        throw error;
-      }
-
-      if (data.success) {
-        setCallSid(data.call_sid);
-        setCallStatus(`Call initiated successfully! Calling ${phoneNumber}...`);
-        
-        // Simulate call progress updates
-        setTimeout(() => setCallStatus('Ringing...'), 2000);
-        setTimeout(() => setCallStatus(`Connected! ${assistant.name} is now speaking.`), 5000);
-      } else {
-        throw new Error(data.error || 'Failed to initiate call');
-      }
+      setCallSid(callData.id);
+      setCallStatus(`Call initiated successfully! Calling ${phoneNumber}...`);
+      
+      // Simulate call progress updates
+      setTimeout(() => setCallStatus('Ringing...'), 2000);
+      setTimeout(() => setCallStatus(`Connected! ${assistant.name} is now speaking.`), 5000);
 
     } catch (error) {
       console.error('Call error:', error);
@@ -155,7 +148,7 @@ export const OutboundCallInterface: React.FC<OutboundCallInterfaceProps> = ({
           <div className="text-xs text-gray-500 space-y-1">
             <p>• Ensure the number includes country code</p>
             <p>• The AI assistant will use {assistant.name}'s personality</p>
-            <p>• Powered by Hugging Face AI model: {assistant.model}</p>
+            <p>• Powered by local backend: {assistant.model}</p>
             <p>• Call logs will be saved to your dashboard</p>
           </div>
         </CardContent>

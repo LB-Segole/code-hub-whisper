@@ -6,7 +6,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Phone, PhoneCall, PhoneOff, Mic, AlertCircle, Activity } from 'lucide-react';
+import { Phone, PhoneCall, PhoneOff, Activity } from 'lucide-react';
 import { backendService } from '@/services/BackendService';
 import { showErrorToast, showSuccessToast } from '@/utils/errorHandling';
 import { Assistant } from '@/types/assistant';
